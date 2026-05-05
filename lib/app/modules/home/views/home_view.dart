@@ -1,427 +1,529 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 
+import '../../activity/views/activity_view.dart';
+import '../../explore/views/explore_view.dart';
+import '../../inbox/views/inbox_view.dart';
+import '../../profile/views/profile_view.dart';
 import '../controllers/home_controller.dart';
+import '../widgets/custom_bottom_navbar.dart';
 
 class HomeView extends GetView<HomeController> {
   const HomeView({super.key});
 
-  static const Color _primary = Color(0xFF33C82C);
+  static const Color _primary = Color(0xFF1E88E5);
+  static const Color _exploreFabColor = Color(0xFF6B4EFF);
 
   @override
   Widget build(BuildContext context) {
     return Obx(() {
       final int navIndex = controller.selectedNavIndex.value;
 
-      return Scaffold(
-        backgroundColor: const Color(0xFFF8FAFC),
-        appBar: AppBar(
-          backgroundColor: Colors.white,
-          elevation: 0,
-          scrolledUnderElevation: 0,
-          title: Text(
-            _titles[navIndex],
-            style: const TextStyle(
-              color: Color(0xFF0F172A),
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          centerTitle: false,
-        ),
-        body: SafeArea(
-          child: IndexedStack(
+      final SystemUiOverlayStyle overlayStyle = navIndex == 0
+          ? SystemUiOverlayStyle.light
+          : SystemUiOverlayStyle.dark;
+
+      return AnnotatedRegion<SystemUiOverlayStyle>(
+        value: overlayStyle.copyWith(statusBarColor: Colors.transparent),
+        child: Scaffold(
+          backgroundColor: navIndex == 0 ? _primary : const Color(0xFFF8F9FE),
+          extendBody: true,
+          body: IndexedStack(
             index: navIndex,
             children: [
-              _buildHomeDashboard(),
-              _buildExploreMap(),
-              _buildCampaigns(),
-              _buildBilling(),
-              _buildProfile(),
+              _buildHome(context),
+              const ActivityView(),
+              const ExploreView(),
+              const InboxView(),
+              const ProfileView(),
             ],
           ),
-        ),
-        bottomNavigationBar: BottomNavigationBar(
-          type: BottomNavigationBarType.fixed,
-          currentIndex: navIndex,
-          onTap: controller.changeNav,
-          selectedItemColor: _primary,
-          unselectedItemColor: const Color(0xFF64748B),
-          selectedFontSize: 12,
-          unselectedFontSize: 12,
-          items: const [
-            BottomNavigationBarItem(
-              icon: Icon(Icons.home_outlined),
-              activeIcon: Icon(Icons.home_rounded),
-              label: 'Beranda',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.map_outlined),
-              activeIcon: Icon(Icons.map_rounded),
-              label: 'Eksplorasi',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.campaign_outlined),
-              activeIcon: Icon(Icons.campaign_rounded),
-              label: 'Kampanye',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.receipt_long_outlined),
-              activeIcon: Icon(Icons.receipt_long_rounded),
-              label: 'Tagihan',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.person_outline_rounded),
-              activeIcon: Icon(Icons.person_rounded),
-              label: 'Profil',
-            ),
-          ],
+          floatingActionButton: FloatingActionButton(
+            onPressed: () => controller.changeNav(2),
+            backgroundColor: _exploreFabColor,
+            elevation: 4,
+            shape: const CircleBorder(),
+            child: const Icon(Icons.explore_rounded, color: Colors.white, size: 28),
+          ),
+          floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
+          bottomNavigationBar: CustomBottomNavbar(
+            selectedIndex: navIndex,
+            onItemTapped: controller.changeNav,
+          ),
         ),
       );
     });
   }
 
-  List<String> get _titles => const [
-    'Beranda',
-    'Eksplorasi Peta',
-    'Kampanye',
-    'Tagihan',
-    'Profil',
-  ];
-
-  Widget _buildHomeDashboard() {
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        _sectionCard(
-          color: const Color(0xFFECFDF5),
-          child: const Row(
-            children: [
-              Icon(Icons.ads_click_rounded, color: _primary, size: 30),
-              SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Kampanye Aktif',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w700,
-                        color: Color(0xFF065F46),
-                      ),
-                    ),
-                    SizedBox(height: 4),
-                    Text(
-                      '2 iklan sedang tayang di Jalan Sudirman dan Gatot Subroto',
-                      style: TextStyle(color: Color(0xFF065F46)),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 12),
-        _sectionCard(
-          color: const Color(0xFFFFFBEB),
-          child: const Row(
-            children: [
-              Icon(
-                Icons.notifications_active_rounded,
-                color: Color(0xFFD97706),
-                size: 30,
-              ),
-              SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Tagihan Mendekati Jatuh Tempo',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w700,
-                        color: Color(0xFF92400E),
-                      ),
-                    ),
-                    SizedBox(height: 4),
-                    Text(
-                      'Invoice INV-2404-091 jatuh tempo 3 hari lagi',
-                      style: TextStyle(color: Color(0xFF92400E)),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 16),
-        const Text(
-          'Rekomendasi Titik Populer',
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w700,
-            color: Color(0xFF0F172A),
-          ),
-        ),
-        const SizedBox(height: 12),
-        ...List.generate(
-          3,
-          (index) => Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: _sectionCard(
-              child: ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: CircleAvatar(
-                  backgroundColor: const Color(0xFFE2E8F0),
-                  child: Text('${index + 1}'),
-                ),
-                title: Text('Jalan Strategis #${index + 1}'),
-                subtitle: const Text('Mulai dari Rp 3.500.000 / bulan'),
-                trailing: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 6,
-                  ),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFDCFCE7),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: const Text(
-                    'Promo',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Color(0xFF166534),
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildExploreMap() {
-    return Stack(
-      children: [
-        Container(
-          color: const Color(0xFFDCEBFF),
-          child: const Center(
-            child: Text(
-              'Peta GIS Full-Screen',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.w700,
-                color: Color(0xFF1E3A8A),
-              ),
-            ),
-          ),
-        ),
-        Positioned(
-          top: 16,
-          left: 16,
-          right: 16,
-          child: Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: const [
-              Chip(label: Text('Harga: < 5 Juta')),
-              Chip(label: Text('Ukuran: Medium')),
-              Chip(label: Text('Status: Tersedia')),
-            ],
-          ),
-        ),
-        Positioned(
-          bottom: 24,
-          left: 16,
-          right: 16,
-          child: _sectionCard(
-            child: const ListTile(
-              contentPadding: EdgeInsets.zero,
-              title: Text(
-                'Jl. Sudirman - Billboard A12',
-                style: TextStyle(fontWeight: FontWeight.w700),
-              ),
-              subtitle: Text('Tap-to-Book tersedia • Rp 7.200.000 / bulan'),
-              trailing: Icon(Icons.chevron_right_rounded),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildCampaigns() {
-    final tabs = [
-      'Menunggu Pembayaran',
-      'Proses Pemasangan',
-      'Sedang Tayang',
-      'Selesai',
-    ];
+  Widget _buildHome(BuildContext context) {
+    final double topPadding = MediaQuery.of(context).padding.top;
 
     return Column(
       children: [
-        const SizedBox(height: 8),
-        SizedBox(
-          height: 44,
-          child: Obx(
-            () => ListView.separated(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              scrollDirection: Axis.horizontal,
-              itemBuilder: (context, index) {
-                final bool active =
-                    controller.selectedCampaignTab.value == index;
-                return ChoiceChip(
-                  label: Text(tabs[index]),
-                  selected: active,
-                  onSelected: (_) => controller.changeCampaignTab(index),
-                  selectedColor: const Color(0xFFDCFCE7),
-                  labelStyle: TextStyle(
-                    color: active
-                        ? const Color(0xFF166534)
-                        : const Color(0xFF334155),
-                    fontWeight: FontWeight.w600,
-                  ),
-                );
-              },
-              separatorBuilder: (_, __) => const SizedBox(width: 8),
-              itemCount: tabs.length,
-            ),
-          ),
-        ),
-        const SizedBox(height: 12),
-        Expanded(
-          child: Obx(
-            () => ListView.builder(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              itemCount: 4,
-              itemBuilder: (_, index) => Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: _sectionCard(
-                  child: ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    leading: const Icon(Icons.storefront_rounded),
-                    title: Text(
-                      'Order #CMP-${controller.selectedCampaignTab}${index + 1}',
-                    ),
-                    subtitle: Text(tabs[controller.selectedCampaignTab.value]),
-                    trailing: const Icon(Icons.chevron_right_rounded),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildBilling() {
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        _sectionCard(
-          color: const Color(0xFFF8FAFC),
-          child: const ListTile(
-            contentPadding: EdgeInsets.zero,
-            leading: Icon(
-              Icons.request_quote_rounded,
-              color: Color(0xFF0EA5E9),
-            ),
-            title: Text('Invoice Belum Dibayar'),
-            subtitle: Text('INV-2404-091 • Rp 8.750.000 • Jatuh tempo 3 hari'),
-            trailing: Icon(Icons.chevron_right_rounded),
-          ),
-        ),
-        const SizedBox(height: 12),
-        _sectionCard(
-          child: const ListTile(
-            contentPadding: EdgeInsets.zero,
-            leading: Icon(Icons.history_rounded, color: Color(0xFF6366F1)),
-            title: Text('Riwayat Pembayaran'),
-            subtitle: Text('Lihat transaksi sebelumnya dan bukti bayar'),
-            trailing: Icon(Icons.chevron_right_rounded),
-          ),
-        ),
-        const SizedBox(height: 12),
-        _sectionCard(
-          color: const Color(0xFFFFFBEB),
-          child: const ListTile(
-            contentPadding: EdgeInsets.zero,
-            leading: Icon(Icons.autorenew_rounded, color: Color(0xFFD97706)),
-            title: Text('Perpanjangan Sewa'),
-            subtitle: Text('2 slot akan habis masa tayang dalam 7 hari'),
-            trailing: Icon(Icons.chevron_right_rounded),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildProfile() {
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        _sectionCard(
-          child: const ListTile(
-            contentPadding: EdgeInsets.zero,
-            leading: CircleAvatar(
-              backgroundColor: Color(0xFFE2E8F0),
-              child: Icon(Icons.business_rounded, color: Color(0xFF334155)),
-            ),
-            title: Text('PT Smart Ad-Tech Indonesia'),
-            subtitle: Text('Kelola identitas, NIB, dan NPWP perusahaan'),
-          ),
-        ),
-        const SizedBox(height: 12),
-        _sectionCard(
-          child: const Column(
+        Container(
+          color: _primary,
+          padding: EdgeInsets.fromLTRB(20, topPadding + 10, 20, 24),
+          child: Column(
             children: [
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: Icon(Icons.badge_outlined),
-                title: Text('NIB'),
-                subtitle: Text('1207000123456'),
+              Row(
+                children: [
+                  const CircleAvatar(
+                    radius: 24,
+                    backgroundColor: Colors.white24,
+                    backgroundImage: NetworkImage(
+                      'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&w=150&q=80',
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  const Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Lokasi Saat Ini', style: TextStyle(fontSize: 12, color: Colors.white70)),
+                        SizedBox(height: 2),
+                        Text('Surabaya, Jawa Timur', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.white)),
+                      ],
+                    ),
+                  ),
+                  Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        const Icon(Icons.notifications_rounded, color: Colors.white, size: 22),
+                        Positioned(
+                          top: 12,
+                          right: 12,
+                          child: Container(
+                            width: 8,
+                            height: 8,
+                            decoration: const BoxDecoration(
+                              color: Color(0xFFFF3B30),
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
-              Divider(height: 1),
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: Icon(Icons.description_outlined),
-                title: Text('NPWP'),
-                subtitle: Text('01.234.567.8-901.000'),
-              ),
-              Divider(height: 1),
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: Icon(Icons.support_agent_rounded),
-                title: Text('Bantuan / CS'),
-                subtitle: Text('Hubungi tim support kapan saja'),
-                trailing: Icon(Icons.chevron_right_rounded),
+              const SizedBox(height: 24),
+              Row(
+                children: [
+                  Expanded(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const TextField(
+                        decoration: InputDecoration(
+                          icon: Icon(Icons.search, color: Colors.grey),
+                          hintText: 'Cari jalan atau area...',
+                          border: InputBorder.none,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(Icons.search, color: Colors.white),
+                  ),
+                ],
               ),
             ],
           ),
         ),
+        Expanded(
+          child: Container(
+            decoration: const BoxDecoration(
+              color: Color(0xFFF8F9FE),
+              borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
+            ),
+            child: ClipRRect(
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
+              child: ListView(
+                padding: const EdgeInsets.only(left: 20, right: 20, top: 30, bottom: 100),
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _summaryCard('Iklan Aktif', '2 Titik', 'Bulan ini', const Color(0xFFEEF2FF), _primary),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: _summaryCard('Tagihan', '1 Invoice', 'Jatuh tempo', const Color(0xFFFFF7ED), Colors.orange),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      _categoryItem(Icons.tv_rounded, 'Videotron'),
+                      _categoryItem(Icons.picture_in_picture_rounded, 'Baliho'),
+                      _categoryItem(Icons.signpost_rounded, 'Signage'),
+                      _categoryItem(Icons.grid_view_rounded, 'Lainnya'),
+                    ],
+                  ),
+                  const SizedBox(height: 32),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text('Titik Populer', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                      TextButton(
+                        onPressed: () {},
+                        style: TextButton.styleFrom(padding: EdgeInsets.zero, tapTargetSize: MaterialTapTargetSize.shrinkWrap),
+                        child: const Text('Lihat Semua', style: TextStyle(color: _primary)),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    height: 180,
+                    child: ListView(
+                      scrollDirection: Axis.horizontal,
+                      clipBehavior: Clip.none,
+                      children: [
+                        _popularCard(
+                          'Jl. Sudirman',
+                          'Mulai Rp 15 Jt',
+                          'https://images.unsplash.com/photo-1486006920555-c77dcf18193c?auto=format&fit=crop&w=400&q=80',
+                        ),
+                        _popularCard(
+                          'Gatot Subroto',
+                          'Mulai Rp 20 Jt',
+                          'https://images.unsplash.com/photo-1486006920555-c77dcf18193c?auto=format&fit=crop&w=400&q=80',
+                        ),
+                        _popularCard(
+                          'Kuningan',
+                          'Mulai Rp 18 Jt',
+                          'https://images.unsplash.com/photo-1542282088-fe8426682b8f?auto=format&fit=crop&w=400&q=80',
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 32),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text('Promo Terbatas', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                      TextButton(
+                        onPressed: () {},
+                        style: TextButton.styleFrom(padding: EdgeInsets.zero, tapTargetSize: MaterialTapTargetSize.shrinkWrap),
+                        child: const Text('Lihat Semua', style: TextStyle(color: _primary)),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    height: 170,
+                    child: ListView(
+                      scrollDirection: Axis.horizontal,
+                      clipBehavior: Clip.none,
+                      children: [
+                        _promoCard(
+                          title: 'Jl. Ahmad Yani',
+                          price: 'Rp 12 Jt / bulan',
+                          badgeText: 'Diskon 20%',
+                          badgeColor: const Color(0xFFFF5252),
+                          imageUrl: 'https://images.unsplash.com/photo-1542282088-fe8426682b8f?auto=format&fit=crop&w=400&q=80',
+                        ),
+                        _promoCard(
+                          title: 'Kawasan Darmo',
+                          price: 'Rp 8.5 Jt / bulan',
+                          badgeText: 'Tersedia Besok',
+                          badgeColor: const Color(0xFFFF9800),
+                          imageUrl: 'https://images.unsplash.com/photo-1542282088-fe8426682b8f?auto=format&fit=crop&w=400&q=80',
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 32),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text('Paket Kampanye', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                      TextButton(
+                        onPressed: () {},
+                        style: TextButton.styleFrom(padding: EdgeInsets.zero, tapTargetSize: MaterialTapTargetSize.shrinkWrap),
+                        child: const Text('Selengkapnya', style: TextStyle(color: _primary)),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  _bundleCard(
+                    title: 'Kuasai Area CBD',
+                    subtitle: '3 Titik Videotron Strategis di Pusat Bisnis',
+                    imageUrl: 'https://images.unsplash.com/photo-1449824913935-59a10b8d2000?auto=format&fit=crop&w=800&q=80',
+                    gradientColors: [_primary.withOpacity(0.9), Colors.transparent],
+                  ),
+                  _bundleCard(
+                    title: 'Paket Mudik Lebaran',
+                    subtitle: 'Dominasi Jalur Pantura & Rest Area Tol',
+                    imageUrl: 'https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?auto=format&fit=crop&w=800&q=80',
+                    gradientColors: [const Color(0xFF0F172A).withOpacity(0.9), Colors.transparent],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
       ],
     );
   }
 
-  Widget _sectionCard({required Widget child, Color color = Colors.white}) {
+  Widget _summaryCard(String title, String value, String subtitle, Color bgColor, Color textColor) {
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: color,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x0A0F172A),
-            blurRadius: 16,
-            offset: Offset(0, 8),
+        color: bgColor,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title, style: TextStyle(color: textColor, fontWeight: FontWeight.w600, fontSize: 13)),
+          const SizedBox(height: 8),
+          Text(value, style: TextStyle(color: textColor, fontWeight: FontWeight.bold, fontSize: 20)),
+          const SizedBox(height: 4),
+          Text(subtitle, style: const TextStyle(color: Colors.grey, fontSize: 12)),
+        ],
+      ),
+    );
+  }
+
+  Widget _categoryItem(IconData icon, String label) {
+    return Column(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.02),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Icon(icon, color: _primary),
+        ),
+        const SizedBox(height: 8),
+        Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500)),
+      ],
+    );
+  }
+
+  Widget _popularCard(String title, String price, String imageUrl) {
+    return Container(
+      width: 140,
+      margin: const EdgeInsets.only(right: 16),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(20),
+        image: DecorationImage(
+          image: NetworkImage(imageUrl),
+          fit: BoxFit.cover,
+        ),
+      ),
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(20),
+          gradient: LinearGradient(
+            begin: Alignment.bottomCenter,
+            end: Alignment.topCenter,
+            colors: [Colors.black.withOpacity(0.8), Colors.transparent],
+          ),
+        ),
+        padding: const EdgeInsets.all(12),
+        alignment: Alignment.bottomLeft,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(price, style: const TextStyle(color: Colors.white, fontSize: 12)),
+            Text(title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _promoCard({
+    required String title,
+    required String price,
+    required String badgeText,
+    required Color badgeColor,
+    required String imageUrl,
+  }) {
+    return Container(
+      width: 260,
+      margin: const EdgeInsets.only(right: 16),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(20),
+        image: DecorationImage(
+          image: NetworkImage(imageUrl),
+          fit: BoxFit.cover,
+        ),
+      ),
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(20),
+              gradient: LinearGradient(
+                begin: Alignment.bottomCenter,
+                end: Alignment.topCenter,
+                colors: [Colors.black.withOpacity(0.85), Colors.transparent],
+              ),
+            ),
+          ),
+          Positioned(
+            top: 12,
+            left: 12,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: badgeColor,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(
+                badgeText,
+                style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ),
+          Positioned(
+            bottom: 12,
+            left: 12,
+            right: 12,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    const Icon(Icons.flash_on_rounded, color: Colors.amber, size: 14),
+                    const SizedBox(width: 4),
+                    Text(
+                      price,
+                      style: const TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w500),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
         ],
       ),
-      child: child,
     );
   }
+
+  Widget _bundleCard({
+    required String title,
+    required String subtitle,
+    required String imageUrl,
+    required List<Color> gradientColors,
+  }) {
+    return Container(
+      height: 140,
+      margin: const EdgeInsets.only(bottom: 16),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(20),
+        image: DecorationImage(
+          image: NetworkImage(imageUrl),
+          fit: BoxFit.cover,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.08),
+            blurRadius: 15,
+            offset: const Offset(0, 5),
+          ),
+        ],
+      ),
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(20),
+              gradient: LinearGradient(
+                begin: Alignment.centerLeft,
+                end: Alignment.centerRight,
+                colors: gradientColors,
+              ),
+            ),
+          ),
+          Positioned(
+            left: 20,
+            right: 40,
+            top: 0,
+            bottom: 0,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.25),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: const Text(
+                    'PAKET HEMAT',
+                    style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w800, letterSpacing: 0.5),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  title,
+                  style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold, height: 1.1),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  subtitle,
+                  style: const TextStyle(color: Colors.white70, fontSize: 13),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+          const Positioned(
+            right: 16,
+            bottom: 16,
+            child: CircleAvatar(
+              radius: 16,
+              backgroundColor: Colors.white24,
+              child: Icon(Icons.arrow_forward_rounded, color: Colors.white, size: 18),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
 }
