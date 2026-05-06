@@ -95,7 +95,7 @@ class ProfileView extends StatelessWidget {
                       const SizedBox(height: 16),
                       const Center(
                         child: Text(
-                          'Sapta Adzani',
+                          'Billboard Indonesia',
                           style: TextStyle(
                             fontSize: 22,
                             fontWeight: FontWeight.bold,

@@ -1,7 +1,7 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
 
 class ExploreView extends StatefulWidget {
   const ExploreView({Key? key}) : super(key: key);
@@ -11,16 +11,12 @@ class ExploreView extends StatefulWidget {
 }
 
 class _ExploreViewState extends State<ExploreView> {
-  final Completer<GoogleMapController> _controller = Completer();
-  final Set<Marker> _markers = {};
+  final List<Marker> _markers = [];
   Map<String, dynamic>? _selectedLocation;
 
   static const Color _primary = Color(0xFF1E88E5);
 
-  static const CameraPosition _kInitialPosition = CameraPosition(
-    target: LatLng(-7.2575, 112.7521),
-    zoom: 12.0,
-  );
+  static const LatLng _initialCenter = LatLng(-7.2575, 112.7521);
 
   final List<Map<String, dynamic>> _adSpots = [
     {
@@ -59,24 +55,30 @@ class _ExploreViewState extends State<ExploreView> {
   }
 
   void _setMarkers() {
-    setState(() {
-      for (var spot in _adSpots) {
-        _markers.add(
-          Marker(
-            markerId: MarkerId(spot['id']),
-            position: spot['position'],
-            icon: BitmapDescriptor.defaultMarkerWithHue(
-              spot['available'] ? BitmapDescriptor.hueViolet : BitmapDescriptor.hueRed,
+    _markers
+      ..clear()
+      ..addAll(
+        _adSpots.map(
+          (spot) => Marker(
+            point: spot['position'],
+            width: 44,
+            height: 44,
+            alignment: Alignment.topCenter,
+            child: GestureDetector(
+              onTap: () {
+                setState(() {
+                  _selectedLocation = spot;
+                });
+              },
+              child: Icon(
+                Icons.location_on,
+                color: spot['available'] ? const Color(0xFF6B4EFF) : const Color(0xFFFF3B30),
+                size: 36,
+              ),
             ),
-            onTap: () {
-              setState(() {
-                _selectedLocation = spot;
-              });
-            },
           ),
-        );
-      }
-    });
+        ),
+      );
   }
 
   @override
@@ -119,21 +121,23 @@ class _ExploreViewState extends State<ExploreView> {
                           borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
                           child: Stack(
                             children: [
-                              GoogleMap(
-                                mapType: MapType.normal,
-                                initialCameraPosition: _kInitialPosition,
-                                zoomControlsEnabled: false,
-                                mapToolbarEnabled: false,
-                                myLocationButtonEnabled: false,
-                                onMapCreated: (GoogleMapController controller) {
-                                  _controller.complete(controller);
-                                },
-                                markers: _markers,
-                                onTap: (_) {
-                                  setState(() {
-                                    _selectedLocation = null;
-                                  });
-                                },
+                              FlutterMap(
+                                options: MapOptions(
+                                  initialCenter: _initialCenter,
+                                  initialZoom: 12,
+                                  onTap: (_, __) {
+                                    setState(() {
+                                      _selectedLocation = null;
+                                    });
+                                  },
+                                ),
+                                children: [
+                                  TileLayer(
+                                    urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                                    userAgentPackageName: 'com.example.flutter_application_1',
+                                  ),
+                                  MarkerLayer(markers: _markers),
+                                ],
                               ),
                               _buildSearchBar(),
                               Positioned(
