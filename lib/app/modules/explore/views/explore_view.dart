@@ -1,380 +1,546 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
+
+// Pastikan untuk menyesuaikan path import ini sesuai struktur folder di project GetX Anda
+import '../../../../core/theme.dart';
+import '../../../../models/models.dart';
+import 'billboard_detail_screen.dart';
 
 class ExploreView extends StatefulWidget {
-  const ExploreView({Key? key}) : super(key: key);
+  const ExploreView({super.key});
 
   @override
-  _ExploreViewState createState() => _ExploreViewState();
+  State<ExploreView> createState() => _ExploreViewState();
 }
 
 class _ExploreViewState extends State<ExploreView> {
-  final Completer<GoogleMapController> _controller = Completer();
-  final Set<Marker> _markers = {};
-  Map<String, dynamic>? _selectedLocation;
-
-  static const Color _primary = Color(0xFF1E88E5);
-
-  static const CameraPosition _kInitialPosition = CameraPosition(
-    target: LatLng(-7.2575, 112.7521),
-    zoom: 12.0,
-  );
-
-  final List<Map<String, dynamic>> _adSpots = [
-    {
-      'id': '1',
-      'position': const LatLng(-7.275, 112.750),
-      'title': 'Videotron Jl. Basuki Rahmat',
-      'available': true,
-      'impressions': '124.5k Viewers / Hari',
-      'price': 'Rp 15.000.000 / bln',
-      'image': 'https://images.unsplash.com/photo-1542282088-fe8426682b8f?auto=format&fit=crop&w=400&q=80',
-    },
-    {
-      'id': '2',
-      'position': const LatLng(-7.250, 112.760),
-      'title': 'Baliho Jl. Ahmad Yani',
-      'available': false,
-      'impressions': '98.2k Viewers / Hari',
-      'price': 'Rp 8.500.000 / bln',
-      'image': 'https://images.unsplash.com/photo-1620912196424-df3c8f8b80fc?auto=format&fit=crop&w=400&q=80',
-    },
-    {
-      'id': '3',
-      'position': const LatLng(-7.285, 112.740),
-      'title': 'Signage Tunjungan Plaza',
-      'available': true,
-      'impressions': '250.1k Viewers / Hari',
-      'price': 'Rp 22.000.000 / bln',
-      'image': 'https://images.unsplash.com/photo-1486006920555-c77dcf18193c?auto=format&fit=crop&w=400&q=80',
-    }
-  ];
-
-  @override
-  void initState() {
-    super.initState();
-    _setMarkers();
-  }
-
-  void _setMarkers() {
-    setState(() {
-      for (var spot in _adSpots) {
-        _markers.add(
-          Marker(
-            markerId: MarkerId(spot['id']),
-            position: spot['position'],
-            icon: BitmapDescriptor.defaultMarkerWithHue(
-              spot['available'] ? BitmapDescriptor.hueViolet : BitmapDescriptor.hueRed,
-            ),
-            onTap: () {
-              setState(() {
-                _selectedLocation = spot;
-              });
-            },
-          ),
-        );
-      }
-    });
-  }
+  final MapController _mapController = MapController();
+  BillboardModel? _selectedBillboard;
 
   @override
   Widget build(BuildContext context) {
-    return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: SystemUiOverlayStyle.light.copyWith(statusBarColor: Colors.transparent),
-      child: Scaffold(
-        backgroundColor: _primary,
-        body: SafeArea(
-          bottom: false,
-          child: Column(
+    return Scaffold(
+      backgroundColor: AppColors.surfaceContainerLow,
+      body: Stack(
+        children: [
+          // LEVEL 0: Map Background
+          FlutterMap(
+            mapController: _mapController,
+            options: MapOptions(
+              initialCenter: const LatLng(34.0522, -118.2437),
+              initialZoom: 15.0,
+              onTap: (_, __) {
+                setState(() {
+                  _selectedBillboard = null;
+                });
+              },
+            ),
             children: [
-              Container(
-                color: _primary,
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
-                child: Row(
-                  children: const [
-                    Text(
-                      'Explore Lokasi',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
+              TileLayer(
+                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                userAgentPackageName: 'com.billboardplatform.app',
+                tileBuilder: (context, widget, tile) {
+                  // Mute the colors of the OSM tiles slightly to match design
+                  return ColorFiltered(
+                    colorFilter: const ColorFilter.matrix([
+                      0.8, 0.1, 0.1, 0, 10,
+                      0.1, 0.8, 0.1, 0, 15,
+                      0.1, 0.1, 0.9, 0, 30,
+                      0, 0, 0, 1, 0,
+                    ]),
+                    child: widget,
+                  );
+                },
               ),
-              Expanded(
-                child: Container(
-                  width: double.infinity,
-                  decoration: const BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
-                  ),
-                  child: Column(
-                    children: [
-                      Expanded(
-                        child: ClipRRect(
-                          borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
-                          child: Stack(
-                            children: [
-                              GoogleMap(
-                                mapType: MapType.normal,
-                                initialCameraPosition: _kInitialPosition,
-                                zoomControlsEnabled: false,
-                                mapToolbarEnabled: false,
-                                myLocationButtonEnabled: false,
-                                onMapCreated: (GoogleMapController controller) {
-                                  _controller.complete(controller);
-                                },
-                                markers: _markers,
-                                onTap: (_) {
-                                  setState(() {
-                                    _selectedLocation = null;
-                                  });
-                                },
-                              ),
-                              _buildSearchBar(),
-                              Positioned(
-                                bottom: 16,
-                                right: 16,
-                                child: FloatingActionButton(
-                                  mini: true,
-                                  backgroundColor: Colors.white,
-                                  onPressed: () {},
-                                  child: const Icon(Icons.my_location, color: _primary),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                      if (_selectedLocation != null)
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 80),
-                          child: _buildDetailsCard(),
-                        )
-                      else
-                        const SizedBox(height: 100),
-                    ],
-                  ),
-                ),
+              MarkerLayer(
+                markers: DummyData.billboards.map((b) => _buildMarker(b)).toList(),
               ),
             ],
           ),
-        ),
+
+          // LEVEL 1: Top Nav & Search (Floating)
+          SafeArea(
+            bottom: false,
+            child: Column(
+              children: [
+                const SizedBox(height: 16),
+                _TopAppBar(),
+                const SizedBox(height: 16),
+                _SearchBar(),
+              ],
+            ),
+          ),
+
+          // LEVEL 2: Floating Property Preview Card
+          if (_selectedBillboard != null)
+            Positioned(
+              bottom: 16,
+              left: 16,
+              right: 16,
+              child: _PropertyPreviewCard(
+                billboard: _selectedBillboard!,
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) =>
+                          BillboardDetailScreen(billboard: _selectedBillboard!),
+                    ),
+                  );
+                },
+              ),
+            ),
+        ],
       ),
     );
   }
 
-  Widget _buildSearchBar() {
-    return Positioned(
-      top: 24,
-      left: 24,
-      right: 24,
+  Marker _buildMarker(BillboardModel billboard) {
+    bool isPremium = billboard.pricePerWeek > 3000;
+    bool isAvailable = billboard.isAvailable;
+
+    Color markerColor;
+    IconData iconData;
+    double size;
+
+    if (!isAvailable) {
+      markerColor = AppColors.outline; // Muted Gray
+      iconData = Icons.lock;
+      size = 28;
+    } else if (isPremium) {
+      markerColor = AppColors.secondaryContainer; // Amber Glow
+      iconData = Icons.visibility;
+      size = 40;
+    } else {
+      markerColor = AppColors.primary; // Soft Blue
+      iconData = Icons.campaign;
+      size = 32;
+    }
+
+    return Marker(
+      point: LatLng(billboard.lat, billboard.lng),
+      width: size * 1.5,
+      height: size * 1.5 + 10,
+      alignment: Alignment.topCenter,
+      child: GestureDetector(
+        onTap: () {
+          setState(() {
+            _selectedBillboard = billboard;
+          });
+          _mapController.move(LatLng(billboard.lat, billboard.lng - 0.002), 15.0);
+        },
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              width: size,
+              height: size,
+              decoration: BoxDecoration(
+                color: markerColor,
+                shape: BoxShape.circle,
+                border: Border.all(
+                    color: AppColors.surfaceContainerLowest, width: 3),
+                boxShadow: [
+                  if (isPremium)
+                    BoxShadow(
+                      color: markerColor.withOpacity(0.6),
+                      blurRadius: 16,
+                    )
+                  else
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.1),
+                      blurRadius: 4,
+                      offset: const Offset(0, 2),
+                    ),
+                ],
+              ),
+              child: Icon(
+                iconData,
+                color: !isAvailable
+                    ? AppColors.surfaceContainerLowest
+                    : (isPremium
+                        ? AppColors.onSecondaryContainer
+                        : AppColors.onPrimary),
+                size: size * 0.5,
+              ),
+            ),
+            // Triangle pointer
+            Transform.translate(
+              offset: const Offset(0, -2),
+              child: Container(
+                width: 0,
+                height: 0,
+                decoration: BoxDecoration(
+                  border: Border(
+                    top: BorderSide(width: size * 0.25, color: markerColor),
+                    left: BorderSide(
+                        width: size * 0.2, color: Colors.transparent),
+                    right: BorderSide(
+                        width: size * 0.2, color: Colors.transparent),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _TopAppBar extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      height: 56,
+      decoration: BoxDecoration(
+        color: AppColors.surfaceContainerLowest.withOpacity(0.9),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.outlineVariant.withOpacity(0.5)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 30,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          IconButton(
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(),
+            icon: const Icon(Icons.menu, color: AppColors.primary),
+            onPressed: () {},
+          ),
+          Text(
+            'BillboardGo',
+            style: GoogleFonts.inter(
+              fontSize: 18,
+              fontWeight: FontWeight.w900,
+              letterSpacing: -0.5,
+              color: AppColors.primary,
+            ),
+          ),
+          Container(
+            width: 32,
+            height: 32,
+            decoration: const BoxDecoration(
+              shape: BoxShape.circle,
+              image: DecorationImage(
+                image: NetworkImage(
+                    'https://ui-avatars.com/api/?name=Alex+Mercer&background=003ec7&color=fff&size=128'),
+                fit: BoxFit.cover,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SearchBar extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Row(
+        children: [
+          Expanded(
+            child: Container(
+              height: 48,
+              decoration: BoxDecoration(
+                color: AppColors.surfaceContainerLowest,
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(color: AppColors.surfaceContainerHigh),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.08),
+                    blurRadius: 24,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Row(
+                children: [
+                  const Icon(Icons.search, color: AppColors.outline, size: 20),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: TextField(
+                      decoration: InputDecoration(
+                        hintText: 'Search locations, zones...',
+                        hintStyle: GoogleFonts.inter(
+                          fontSize: 14,
+                          color: AppColors.outline,
+                        ),
+                        border: InputBorder.none,
+                        contentPadding: EdgeInsets.zero,
+                        isDense: true,
+                      ),
+                      style: GoogleFonts.inter(
+                        fontSize: 14,
+                        color: AppColors.onSurface,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Container(
+            height: 48,
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            decoration: BoxDecoration(
+              color: AppColors.primary,
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(color: AppColors.primaryFixed),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.08),
+                  blurRadius: 24,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.radar, color: Colors.white, size: 18),
+                const SizedBox(width: 8),
+                Text(
+                  '3KM RADIUS',
+                  style: GoogleFonts.inter(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 0.05 * 11,
+                    color: Colors.white,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PropertyPreviewCard extends StatelessWidget {
+  final BillboardModel billboard;
+  final VoidCallback onTap;
+
+  const _PropertyPreviewCard({
+    required this.billboard,
+    required this.onTap,
+  });
+
+  String _formatImpressions() {
+    final val = billboard.dailyImpressions;
+    if (val >= 1000000) return '${(val / 1000000).toStringAsFixed(1)}M';
+    if (val >= 1000) return '${(val / 1000).round()}k';
+    return val.toString();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    bool isPremium = billboard.pricePerWeek > 3000;
+
+    return GestureDetector(
+      onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16),
+        padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
+          color: AppColors.surfaceContainerLowest,
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(
+              color: AppColors.primary.withOpacity(0.1), width: 2),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 10,
-              offset: const Offset(0, 5),
+              color: Colors.black.withOpacity(0.08),
+              blurRadius: 24,
+              offset: const Offset(0, 4),
             ),
           ],
         ),
         child: Row(
           children: [
-            const Icon(Icons.search, color: Colors.grey),
-            const SizedBox(width: 10),
-            const Expanded(
-              child: TextField(
-                decoration: InputDecoration(
-                  hintText: 'Cari jalan atau area...',
-                  border: InputBorder.none,
+            // Image with Premium Badge
+            Container(
+              width: 96,
+              height: 96,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              clipBehavior: Clip.antiAlias,
+              child: Stack(
+                children: [
+                  CachedNetworkImage(
+                    imageUrl: billboard.imageUrl,
+                    width: 96,
+                    height: 96,
+                    fit: BoxFit.cover,
+                    placeholder: (_, __) =>
+                        Container(color: AppColors.surfaceContainerHigh),
+                    errorWidget: (_, __, ___) => Container(
+                      color: AppColors.surfaceContainerHigh,
+                      child: const Icon(Icons.image, color: AppColors.outline),
+                    ),
+                  ),
+                  if (isPremium)
+                    Positioned(
+                      top: 4,
+                      left: 4,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: AppColors.secondaryContainer.withOpacity(0.9),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.star,
+                                size: 10, color: AppColors.onSecondaryContainer),
+                            const SizedBox(width: 2),
+                            Text(
+                              'PREMIUM',
+                              style: GoogleFonts.inter(
+                                fontSize: 9,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 0.5,
+                                color: AppColors.onSecondaryContainer,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 16),
+            // Content
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(
+                              child: Text(
+                                billboard.name,
+                                style: GoogleFonts.inter(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.onSurface,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            const Icon(Icons.bookmark_border,
+                                size: 20, color: AppColors.outline),
+                          ],
+                        ),
+                        const SizedBox(height: 2),
+                        Row(
+                          children: [
+                            const Icon(Icons.location_on,
+                                size: 14, color: AppColors.onSurfaceVariant),
+                            const SizedBox(width: 4),
+                            Expanded(
+                              child: Text(
+                                billboard.location,
+                                style: GoogleFonts.inter(
+                                  fontSize: 12,
+                                  color: AppColors.onSurfaceVariant,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'EST. DAILY IMPR.',
+                              style: GoogleFonts.inter(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.outline,
+                              ),
+                            ),
+                            Text(
+                              _formatImpressions(),
+                              style: GoogleFonts.inter(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.primary,
+                              ),
+                            ),
+                          ],
+                        ),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Text(
+                              'AVAILABILITY',
+                              style: GoogleFonts.inter(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.outline,
+                              ),
+                            ),
+                            Text(
+                              billboard.isAvailable
+                                  ? 'Available Now'
+                                  : 'Booked',
+                              style: GoogleFonts.inter(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: billboard.isAvailable
+                                    ? AppColors.secondary
+                                    : AppColors.outline,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
               ),
             ),
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF3F4F6),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: const Icon(Icons.tune, color: Color(0xFF4B5563), size: 20),
-            ),
+            const SizedBox(width: 8),
           ],
         ),
       ),
     );
   }
-
-  Widget _buildRouteIcons() {
-    return Column(
-      children: [
-        Container(
-          padding: const EdgeInsets.all(6),
-          decoration: const BoxDecoration(
-            color: _primary,
-            shape: BoxShape.circle,
-          ),
-          child: const Icon(Icons.location_on, color: Colors.white, size: 16),
-        ),
-        Container(
-          width: 2,
-          height: 36,
-          color: Colors.grey.shade300,
-        ),
-        Container(
-          padding: const EdgeInsets.all(6),
-          decoration: const BoxDecoration(
-            color: _primary,
-            shape: BoxShape.circle,
-          ),
-          child: const Icon(Icons.visibility, color: Colors.white, size: 16),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildDetailsCard() {
-    return Container(
-      margin: const EdgeInsets.fromLTRB(24, 24, 24, 0),
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 20,
-            offset: const Offset(0, 10),
-          ),
-          BoxShadow(
-            color: Colors.black.withOpacity(0.02),
-            blurRadius: 5,
-            offset: const Offset(0, -5),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildRouteIcons(),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Titik Reklame',
-                      style: TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.w600),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      _selectedLocation!['title'],
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Color(0xFF1F2937)),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 22),
-                    const Text(
-                      'Estimasi Traffic',
-                      style: TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.w600),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      _selectedLocation!['impressions'],
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Color(0xFF1F2937)),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 16),
-            child: Divider(color: Color(0xFFF3F4F6), thickness: 1.5),
-          ),
-          Row(
-            children: [
-              CircleAvatar(
-                radius: 20,
-                backgroundImage: NetworkImage(_selectedLocation!['image']),
-              ),
-              const SizedBox(width: 12),
-              const Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'PT Smart AdTech',
-                      style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF1F2937)),
-                    ),
-                    Text(
-                      'Verified Mitra',
-                      style: TextStyle(fontSize: 12, color: Colors.grey),
-                    ),
-                  ],
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: const BoxDecoration(
-                  color: Color(0xFFEEF2FF),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(Icons.phone, color: _primary, size: 18),
-              ),
-              const SizedBox(width: 12),
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: const BoxDecoration(
-                  color: Color(0xFFEEF2FF),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(Icons.message, color: _primary, size: 18),
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Harga Sewa',
-                    style: TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.w600),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    _selectedLocation!['price'],
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: _primary),
-                  ),
-                ],
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                decoration: BoxDecoration(
-                  color: _selectedLocation!['available'] ? _primary : const Color(0xFF4B5563),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Text(
-                  _selectedLocation!['available'] ? 'Tersedia' : 'Dipesan',
-                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
+}
