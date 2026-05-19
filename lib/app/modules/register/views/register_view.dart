@@ -121,6 +121,89 @@ class RegisterView extends GetView<RegisterController> {
                     ),
                     const SizedBox(height: 20),
                     const Text(
+                      'Company Name',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 14,
+                        color: Color(0xFF1E293B),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    TextFormField(
+                      controller: controller.companyNameController,
+                      decoration: InputDecoration(
+                        hintText: 'PT Smart Tech',
+                        hintStyle: const TextStyle(color: Color(0xFF94A3B8)),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 16,
+                        ),
+                        border: OutlineInputBorder(
+                          borderSide: const BorderSide(
+                            color: Color(0xFFE2E8F0),
+                          ),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderSide: const BorderSide(
+                            color: Color(0xFFE2E8F0),
+                          ),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: const BorderSide(
+                            color: Color(0xFF33C82C),
+                            width: 1.5,
+                          ),
+                        ),
+                      ),
+                      validator: controller.validateCompanyName,
+                    ),
+                    const SizedBox(height: 20),
+                    const Text(
+                      'NIB',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 14,
+                        color: Color(0xFF1E293B),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    TextFormField(
+                      controller: controller.nibController,
+                      keyboardType: TextInputType.number,
+                      decoration: InputDecoration(
+                        hintText: '1207000123456',
+                        hintStyle: const TextStyle(color: Color(0xFF94A3B8)),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 16,
+                        ),
+                        border: OutlineInputBorder(
+                          borderSide: const BorderSide(
+                            color: Color(0xFFE2E8F0),
+                          ),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderSide: const BorderSide(
+                            color: Color(0xFFE2E8F0),
+                          ),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: const BorderSide(
+                            color: Color(0xFF33C82C),
+                            width: 1.5,
+                          ),
+                        ),
+                      ),
+                      validator: controller.validateNib,
+                    ),
+                    const SizedBox(height: 20),
+                    const Text(
                       'Password',
                       style: TextStyle(
                         fontWeight: FontWeight.w700,

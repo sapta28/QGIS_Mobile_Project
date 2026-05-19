@@ -166,16 +166,30 @@ class HomeView extends GetView<HomeController> {
             child: ListView(
               padding: const EdgeInsets.only(left: 16, right: 16, top: 16, bottom: 100),
               children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: _summaryCard('Active Ads', '2 Spots', 'This month', AppColors.primaryContainer, AppColors.onPrimaryContainer),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: _summaryCard('Invoices', '1 Due', 'Payment needed', AppColors.errorContainer, AppColors.onErrorContainer),
-                    ),
-                  ],
+                Obx(
+                  () => Row(
+                    children: [
+                      Expanded(
+                        child: _summaryCard(
+                          'Active Ads',
+                          '${controller.activeAdsCount.value} Spots',
+                          'This month',
+                          AppColors.primaryContainer,
+                          AppColors.onPrimaryContainer,
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: _summaryCard(
+                          'Invoices',
+                          '${controller.pendingInvoicesCount.value} Due',
+                          'Payment needed',
+                          AppColors.errorContainer,
+                          AppColors.onErrorContainer,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
                 const SizedBox(height: 24),
                 Row(
