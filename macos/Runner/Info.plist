@@ -28,5 +28,9 @@
 	<string>MainMenu</string>
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
+
+	<!-- Location permission description required for macOS -->
+	<key>NSLocationUsageDescription</key>
+	<string>Aplikasi membutuhkan akses lokasi Anda untuk menampilkan billboard di sekitar Anda.</string>
 </dict>
 </plist>

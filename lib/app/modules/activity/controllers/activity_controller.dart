@@ -1,17 +1,21 @@
 import 'package:dio/dio.dart';
 import 'package:get/get.dart';
 
+import '../../../data/services/api/auth_token_store.dart';
 import '../../../data/services/api/user_api_service.dart';
 import '../../../../models/models.dart';
 
 class ActivityController extends GetxController {
-	ActivityController(this._userApiService);
+	ActivityController(this._userApiService, this._tokenStore);
 
 	final UserApiService _userApiService;
+	final AuthTokenStore _tokenStore;
 
 	final bookings = <BookingModel>[].obs;
 	final isLoading = false.obs;
+	final isSubmitting = false.obs;
 	final errorMessage = ''.obs;
+	final selectedStatus = 'all'.obs;
 
 	static const String _fallbackImageUrl =
 			'https://images.unsplash.com/photo-1546484396-fb3fc6f95f98?w=800&q=80';
@@ -26,6 +30,15 @@ class ActivityController extends GetxController {
 		if (isLoading.value) {
 			return;
 		}
+		selectedStatus.value = status ?? 'all';
+
+		final token = _tokenStore.accessToken;
+		if (token == null || token.isEmpty) {
+			bookings.clear();
+			errorMessage.value = 'Sesi login belum tersedia. Silakan login ulang.';
+			return;
+		}
+
 
 		isLoading.value = true;
 		errorMessage.value = '';
@@ -40,6 +53,34 @@ class ActivityController extends GetxController {
 			Get.snackbar('Activities', errorMessage.value);
 		} finally {
 			isLoading.value = false;
+		}
+	}
+
+	Future<bool> cancelActivity({
+		required String activityId,
+		required String cancelReason,
+	}) async {
+		if (isSubmitting.value) {
+			return false;
+		}
+
+		isSubmitting.value = true;
+		errorMessage.value = '';
+		try {
+			await _userApiService.cancelActivity(
+				activityId: activityId,
+				cancelReason: cancelReason,
+			);
+			await fetchActivities(status: selectedStatus.value == 'all'
+				? null
+				: selectedStatus.value);
+			return true;
+		} catch (error) {
+			errorMessage.value = _getErrorMessage(error, 'Gagal membatalkan activity.');
+			Get.snackbar('Activities', errorMessage.value);
+			return false;
+		} finally {
+			isSubmitting.value = false;
 		}
 	}
 

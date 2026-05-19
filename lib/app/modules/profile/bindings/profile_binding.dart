@@ -23,7 +23,10 @@ class ProfileBinding extends Bindings {
       );
     }
     Get.lazyPut<ProfileController>(
-      () => ProfileController(Get.find<AuthApiService>()),
+      () => ProfileController(
+        Get.find<AuthApiService>(),
+        Get.find<AuthTokenStore>(),
+      ),
     );
   }
 }

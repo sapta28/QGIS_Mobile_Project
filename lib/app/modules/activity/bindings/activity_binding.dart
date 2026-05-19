@@ -18,7 +18,10 @@ class ActivityBinding extends Bindings {
       () => UserApiService(Get.find<ApiClient>()),
     );
     Get.lazyPut<ActivityController>(
-      () => ActivityController(Get.find<UserApiService>()),
+      () => ActivityController(
+        Get.find<UserApiService>(),
+        Get.find<AuthTokenStore>(),
+      ),
     );
   }
 }

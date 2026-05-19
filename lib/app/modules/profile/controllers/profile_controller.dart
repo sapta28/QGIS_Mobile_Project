@@ -2,12 +2,14 @@ import 'package:dio/dio.dart';
 import 'package:get/get.dart';
 
 import '../../../data/services/api/auth_api_service.dart';
+import '../../../data/services/api/auth_token_store.dart';
 import '../../../routes/app_pages.dart';
 
 class ProfileController extends GetxController {
-	ProfileController(this._authApiService);
+	ProfileController(this._authApiService, this._tokenStore);
 
 	final AuthApiService _authApiService;
+	final AuthTokenStore _tokenStore;
 
 	final name = ''.obs;
 	final email = ''.obs;
@@ -49,6 +51,7 @@ class ProfileController extends GetxController {
 		} catch (_) {
 			// Ignore logout errors and proceed to login screen.
 		} finally {
+			await _tokenStore.clear();
 			Get.offAllNamed(Routes.LOGIN);
 		}
 	}

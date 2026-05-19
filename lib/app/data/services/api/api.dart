@@ -1,8 +1,14 @@
 class ApiEndpoints {
   ApiEndpoints._();
 
-  // Change this to your backend base URL.
-  static const String baseUrl = "http://127.0.0.1:8000/api";
+    // Override with:
+    // flutter run --dart-define=API_BASE_URL=http://192.168.x.x:8000/api
+    // For simulator, localhost/127.0.0.1 is fine. For a physical iPhone,
+    // use your Mac's LAN IP or a public tunnel URL.
+    static const String baseUrl = String.fromEnvironment(
+        'API_BASE_URL',
+        defaultValue: 'http://192.168.68.78:8000/api',
+    );
 
   // General
   static const String dashboardData = "$baseUrl/dashboard-data";

@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../../../core/theme.dart';
+import '../controllers/profile_controller.dart';
 
 class ProfileView extends StatelessWidget {
   const ProfileView({super.key});
@@ -388,7 +390,28 @@ class _LogoutMenuItem extends StatelessWidget {
       color: AppColors.surfaceContainerLowest,
       borderRadius: BorderRadius.circular(16),
       child: InkWell(
-        onTap: () {},
+        onTap: () async {
+          final confirmed = await Get.dialog<bool>(
+            AlertDialog(
+              title: const Text('Keluar akun?'),
+              content: const Text('Sesi kamu akan dihapus dari perangkat ini.'),
+              actions: [
+                TextButton(
+                  onPressed: () => Get.back(result: false),
+                  child: const Text('Batal'),
+                ),
+                FilledButton(
+                  onPressed: () => Get.back(result: true),
+                  child: const Text('Logout'),
+                ),
+              ],
+            ),
+          );
+
+          if (confirmed == true) {
+            await Get.find<ProfileController>().logout();
+          }
+        },
         borderRadius: BorderRadius.circular(16),
         child: Container(
           padding: const EdgeInsets.all(16),
