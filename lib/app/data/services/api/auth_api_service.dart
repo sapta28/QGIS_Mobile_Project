@@ -1,5 +1,3 @@
-import 'package:dio/dio.dart';
-
 import 'api.dart';
 import 'api_client.dart';
 import 'auth_token_store.dart';
