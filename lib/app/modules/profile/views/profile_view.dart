@@ -17,224 +17,161 @@ class ProfileView extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const SizedBox(height: 16),
-              // User Identity Header
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: _UserIdentitySection(),
-              ),
-              const SizedBox(height: 24),
-              // Account Section
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: _SectionHeader(label: 'Account'),
-              ),
-              const SizedBox(height: 8),
-              _MenuGroup(
-                items: const [
-                  ProfileMenuItem(
-                    icon: Icons.person_outline,
-                    label: 'Personal Information',
-                    subtitle: 'Update your name, email, and phone',
-                  ),
-                  ProfileMenuItem(
-                    icon: Icons.credit_card_outlined,
-                    label: 'Payment Methods',
-                    subtitle: 'Manage cards and billing details',
-                  ),
-                  ProfileMenuItem(
-                    icon: Icons.notifications_outlined,
-                    label: 'Notifications',
-                    subtitle: 'Manage alerts for bookings and deals',
-                  ),
-                ],
-              ),
-              const SizedBox(height: 20),
-              // Platform Section
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: _SectionHeader(label: 'Platform'),
-              ),
-              const SizedBox(height: 8),
-              _MenuGroup(
-                items: const [
-                  ProfileMenuItem(
-                    icon: Icons.favorite_outline,
-                    label: 'Saved Billboards',
-                    subtitle: 'View your shortlisted inventory',
-                  ),
-                  ProfileMenuItem(
-                    icon: Icons.history,
-                    label: 'Campaign History',
-                    subtitle: 'Review past and active rentals',
-                  ),
-                ],
-              ),
-              const SizedBox(height: 20),
-              // Support Section
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: _SectionHeader(label: 'Support'),
-              ),
-              const SizedBox(height: 8),
-              _MenuGroup(
-                items: const [
-                  ProfileMenuItem(
-                    icon: Icons.help_outline,
-                    label: 'Help Center',
-                  ),
-                  ProfileMenuItem(
-                    icon: Icons.chat_bubble_outline,
-                    label: 'Contact Support',
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              // Logout
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: _LogoutMenuItem(),
-              ),
-              const SizedBox(height: 24),
-              Center(
-                child: Text(
-                  'App Version 2.4.1',
-                  style: GoogleFonts.inter(
-                    fontSize: 12,
-                    color: AppColors.outlineVariant,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _UserIdentitySection extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Stack(
-          children: [
-            Container(
-              width: 80,
-              height: 80,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: AppColors.surfaceContainerLowest,
-                  width: 2,
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.08),
-                    blurRadius: 12,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-                image: const DecorationImage(
-                  image: NetworkImage(
-                    'https://ui-avatars.com/api/?name=Alex+Mercer&background=003ec7&color=fff&size=256',
-                  ),
-                  fit: BoxFit.cover,
-                ),
-              ),
-            ),
-            Positioned(
-              bottom: 0,
-              right: 0,
-              child: Container(
-                width: 28,
-                height: 28,
-                decoration: BoxDecoration(
-                  color: AppColors.primary,
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.1),
-                      blurRadius: 4,
-                    ),
-                  ],
-                ),
-                child: const Icon(Icons.edit, color: Colors.white, size: 14),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(width: 16),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Sapta Adzani',
-                style: GoogleFonts.inter(
-                  fontSize: 24,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: -0.02 * 24,
-                  color: AppColors.onSurface,
-                ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                'sapta.adzani@gmail.com',
-                style: GoogleFonts.inter(
-                  fontSize: 13,
-                  color: AppColors.onSurfaceVariant,
-                ),
-              ),
-              const SizedBox(height: 8),
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                decoration: BoxDecoration(
-                  color: AppColors.surfaceVariant,
-                  borderRadius: BorderRadius.circular(20),
-                ),
+                color: _primary,
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
                 child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(Icons.verified, size: 14, color: AppColors.primary),
-                    const SizedBox(width: 4),
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: const [
                     Text(
-                      'Verified Buyer',
-                      style: GoogleFonts.inter(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        letterSpacing: 0.05 * 11,
-                        color: AppColors.onSurfaceVariant,
+                      'Profile',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
                   ],
                 ),
               ),
+              Expanded(
+                child: Container(
+                  width: double.infinity,
+                  decoration: const BoxDecoration(
+                    color: _background,
+                    borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+                  ),
+                  child: ListView(
+                    padding: const EdgeInsets.fromLTRB(24, 40, 24, 160),
+                    children: [
+                      Center(
+                        child: Stack(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(4),
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                border: Border.all(color: const Color(0xFFF3F4F6), width: 3),
+                              ),
+                              child: const CircleAvatar(
+                                radius: 50,
+                                backgroundColor: Color(0xFFE5E7EB),
+                                backgroundImage: NetworkImage(
+                                  'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&w=150&q=80',
+                                ),
+                              ),
+                            ),
+                            Positioned(
+                              bottom: 4,
+                              right: 4,
+                              child: GestureDetector(
+                                onTap: () {},
+                                child: Container(
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    color: _primary,
+                                    shape: BoxShape.circle,
+                                    border: Border.all(color: Colors.white, width: 2),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withOpacity(0.1),
+                                        blurRadius: 4,
+                                        offset: const Offset(0, 2),
+                                      ),
+                                    ],
+                                  ),
+                                  child: const Icon(
+                                    Icons.edit_rounded,
+                                    color: Colors.white,
+                                    size: 16,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      const Center(
+                        child: Text(
+                          'Billboard Indonesia',
+                          style: TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF1F2937),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Center(
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFEEF2FF),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: const Text(
+                            'PT Smart Ad-Tech',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: _primary,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 32),
+                      _buildSectionHeader('Data & Legalitas Perusahaan'),
+                      _buildListTile(Icons.location_on_rounded, 'Alamat Perusahaan'),
+                      _buildListTile(Icons.receipt_long_rounded, 'NPWP & Data Pajak'),
+                      const SizedBox(height: 20),
+                      _buildSectionHeader('Pengaturan Akun'),
+                      _buildListTile(Icons.manage_accounts_rounded, 'Akun & Keamanan'),
+                      _buildSwitchTile(Icons.notifications_rounded, 'Notifikasi', true),
+                      const SizedBox(height: 20),
+                      _buildSectionHeader('Bantuan & Dukungan'),
+                      _buildListTile(Icons.headset_mic_rounded, 'Hubungi Account Manager'),
+                      _buildListTile(Icons.help_outline_rounded, 'Pusat Bantuan (FAQ)'),
+                      _buildListTile(Icons.gavel_rounded, 'Syarat & Ketentuan'),
+                      _buildListTile(Icons.privacy_tip_rounded, 'Kebijakan Privasi'),
+                      _buildListTile(Icons.language_rounded, 'Bahasa'),
+                      const SizedBox(height: 10),
+                      
+                      // Bagian Tombol Keluar (Logout) yang sudah diperbarui
+                      ElevatedButton(
+                        onPressed: () {
+                          // Aksi logout di sini
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFFEF4444), // Background merah
+                          foregroundColor: Colors.white, // Icon dan text putih
+                          elevation: 0, // Flat design
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: const [
+                            Icon(Icons.logout_rounded, size: 22),
+                            SizedBox(width: 10),
+                            Text(
+                              'Keluar',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             ],
           ),
-        ),
-      ],
-    );
-  }
-}
-
-class _SectionHeader extends StatelessWidget {
-  final String label;
-  const _SectionHeader({required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(left: 4),
-      child: Text(
-        label.toUpperCase(),
-        style: GoogleFonts.inter(
-          fontSize: 12,
-          fontWeight: FontWeight.w600,
-          letterSpacing: 0.05 * 12,
-          color: AppColors.onSurfaceVariant,
         ),
       ),
     );
