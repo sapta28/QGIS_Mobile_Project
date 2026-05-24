@@ -13,7 +13,12 @@ class ProfileController extends GetxController {
 
 	final name = ''.obs;
 	final email = ''.obs;
+	final role = ''.obs;
+	final avatarUrl = ''.obs;
+	final companyId = ''.obs;
+	final userId = ''.obs;
 	final isLoading = false.obs;
+	final isSaving = false.obs;
 	final errorMessage = ''.obs;
 
 	@override
@@ -33,8 +38,12 @@ class ProfileController extends GetxController {
 			final response = await _authApiService.me();
 			final data = response['data'] is Map ? response['data'] : response;
 			if (data is Map) {
+				userId.value = data['id']?.toString() ?? '';
 				name.value = data['name']?.toString() ?? '';
 				email.value = data['email']?.toString() ?? '';
+				role.value = data['role']?.toString() ?? '';
+				avatarUrl.value = data['avatar_url']?.toString() ?? '';
+				companyId.value = data['company_id']?.toString() ?? '';
 			}
 		} catch (error) {
 			errorMessage.value =
@@ -42,6 +51,42 @@ class ProfileController extends GetxController {
 			Get.snackbar('Profile', errorMessage.value);
 		} finally {
 			isLoading.value = false;
+		}
+	}
+
+	Future<bool> updateProfile({
+		required String name,
+		required String email,
+	}) async {
+		if (isSaving.value) {
+			return false;
+		}
+
+		isSaving.value = true;
+		try {
+			final response = await _authApiService.updateProfile(
+				name: name,
+				email: email,
+			);
+			final data = response['data'] is Map ? response['data'] : response;
+			if (data is Map) {
+				this.name.value = data['name']?.toString() ?? this.name.value;
+				this.email.value = data['email']?.toString() ?? this.email.value;
+				role.value = data['role']?.toString() ?? role.value;
+				avatarUrl.value =
+						data['avatar_url']?.toString() ?? avatarUrl.value;
+				companyId.value =
+						data['company_id']?.toString() ?? companyId.value;
+			}
+			Get.snackbar('Profile', 'Profil berhasil diperbarui.');
+			return true;
+		} catch (error) {
+			final message =
+					_getErrorMessage(error, 'Gagal memperbarui profil pengguna.');
+			Get.snackbar('Profile', message);
+			return false;
+		} finally {
+			isSaving.value = false;
 		}
 	}
 

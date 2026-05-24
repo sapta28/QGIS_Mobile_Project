@@ -5,8 +5,24 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../../core/theme.dart';
 import '../controllers/profile_controller.dart';
 
-class ProfileView extends StatelessWidget {
+class ProfileView extends GetView<ProfileController> {
   const ProfileView({super.key});
+
+  void _showEditProfileSheet(
+    BuildContext context,
+    ProfileController controller,
+  ) {
+    Get.bottomSheet(
+      _ProfileEditSheet(
+        controller: controller,
+      ),
+      isScrollControlled: true,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -23,7 +39,10 @@ class ProfileView extends StatelessWidget {
               // User Identity Header
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: _UserIdentitySection(),
+                child: _UserIdentitySection(
+                  controller: controller,
+                  onEdit: () => _showEditProfileSheet(context, controller),
+                ),
               ),
               const SizedBox(height: 24),
               // Account Section
@@ -33,18 +52,19 @@ class ProfileView extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               _MenuGroup(
-                items: const [
+                items: [
                   ProfileMenuItem(
                     icon: Icons.person_outline,
                     label: 'Personal Information',
                     subtitle: 'Update your name, email, and phone',
+                    onTap: () => _showEditProfileSheet(context, controller),
                   ),
-                  ProfileMenuItem(
+                  const ProfileMenuItem(
                     icon: Icons.credit_card_outlined,
                     label: 'Payment Methods',
                     subtitle: 'Manage cards and billing details',
                   ),
-                  ProfileMenuItem(
+                  const ProfileMenuItem(
                     icon: Icons.notifications_outlined,
                     label: 'Notifications',
                     subtitle: 'Manage alerts for bookings and deals',
@@ -95,7 +115,7 @@ class ProfileView extends StatelessWidget {
               // Logout
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: _LogoutMenuItem(),
+                child: _LogoutMenuItem(controller: controller),
               ),
               const SizedBox(height: 24),
               Center(
@@ -116,108 +136,158 @@ class ProfileView extends StatelessWidget {
 }
 
 class _UserIdentitySection extends StatelessWidget {
+  const _UserIdentitySection({
+    required this.controller,
+    required this.onEdit,
+  });
+
+  final ProfileController controller;
+  final VoidCallback onEdit;
+
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Stack(
-          children: [
-            Container(
-              width: 80,
-              height: 80,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: AppColors.surfaceContainerLowest,
-                  width: 2,
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.08),
-                    blurRadius: 12,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-                image: const DecorationImage(
-                  image: NetworkImage(
-                    'https://ui-avatars.com/api/?name=Alex+Mercer&background=003ec7&color=fff&size=256',
-                  ),
-                  fit: BoxFit.cover,
-                ),
-              ),
-            ),
-            Positioned(
-              bottom: 0,
-              right: 0,
-              child: Container(
-                width: 28,
-                height: 28,
+    return Obx(() {
+      final isLoading = controller.isLoading.value;
+      final displayName =
+          controller.name.value.isNotEmpty ? controller.name.value : 'Pengguna';
+      final displayEmail = controller.email.value.isNotEmpty
+          ? controller.email.value
+          : 'email@domain.com';
+      final avatarUrl = controller.avatarUrl.value;
+      final fallbackAvatar =
+          'https://ui-avatars.com/api/?name=${Uri.encodeComponent(displayName)}&background=003ec7&color=fff&size=256';
+
+      return Row(
+        children: [
+          Stack(
+            children: [
+              Container(
+                width: 80,
+                height: 80,
                 decoration: BoxDecoration(
-                  color: AppColors.primary,
                   shape: BoxShape.circle,
+                  border: Border.all(
+                    color: AppColors.surfaceContainerLowest,
+                    width: 2,
+                  ),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.1),
-                      blurRadius: 4,
+                      color: Colors.black.withOpacity(0.08),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
                     ),
                   ],
+                  image: DecorationImage(
+                    image: NetworkImage(
+                      avatarUrl.isNotEmpty ? avatarUrl : fallbackAvatar,
+                    ),
+                    fit: BoxFit.cover,
+                  ),
                 ),
-                child: const Icon(Icons.edit, color: Colors.white, size: 14),
+                child: isLoading
+                    ? const Center(
+                        child: SizedBox(
+                          width: 24,
+                          height: 24,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                      )
+                    : null,
               ),
-            ),
-          ],
-        ),
-        const SizedBox(width: 16),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Sapta Adzani',
-                style: GoogleFonts.inter(
-                  fontSize: 24,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: -0.02 * 24,
-                  color: AppColors.onSurface,
-                ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                'sapta.adzani@gmail.com',
-                style: GoogleFonts.inter(
-                  fontSize: 13,
-                  color: AppColors.onSurfaceVariant,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                decoration: BoxDecoration(
-                  color: AppColors.surfaceVariant,
+              Positioned(
+                bottom: 0,
+                right: 0,
+                child: InkWell(
+                  onTap: onEdit,
                   borderRadius: BorderRadius.circular(20),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(Icons.verified, size: 14, color: AppColors.primary),
-                    const SizedBox(width: 4),
-                    Text(
-                      'Verified Buyer',
-                      style: GoogleFonts.inter(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        letterSpacing: 0.05 * 11,
-                        color: AppColors.onSurfaceVariant,
-                      ),
+                  child: Container(
+                    width: 28,
+                    height: 28,
+                    decoration: BoxDecoration(
+                      color: AppColors.primary,
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.1),
+                          blurRadius: 4,
+                        ),
+                      ],
                     ),
-                  ],
+                    child:
+                        const Icon(Icons.edit, color: Colors.white, size: 14),
+                  ),
                 ),
               ),
             ],
           ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  displayName,
+                  style: GoogleFonts.inter(
+                    fontSize: 24,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: -0.02 * 24,
+                    color: AppColors.onSurface,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  displayEmail,
+                  style: GoogleFonts.inter(
+                    fontSize: 13,
+                    color: AppColors.onSurfaceVariant,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 6,
+                  children: [
+                    if (controller.role.value.isNotEmpty)
+                      _ProfileChip(label: controller.role.value),
+                    if (controller.companyId.value.isNotEmpty)
+                      _ProfileChip(
+                        label: 'Company ${controller.companyId.value}',
+                      ),
+                    if (controller.userId.value.isNotEmpty)
+                      _ProfileChip(label: 'ID ${controller.userId.value}'),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      );
+    });
+  }
+}
+
+class _ProfileChip extends StatelessWidget {
+  const _ProfileChip({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceVariant,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Text(
+        label,
+        style: GoogleFonts.inter(
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+          letterSpacing: 0.05 * 11,
+          color: AppColors.onSurfaceVariant,
         ),
-      ],
+      ),
     );
   }
 }
@@ -284,12 +354,14 @@ class ProfileMenuItem {
   final String label;
   final String? subtitle;
   final Color? iconColor;
+  final VoidCallback? onTap;
 
   const ProfileMenuItem({
     required this.icon,
     required this.label,
     this.subtitle,
     this.iconColor,
+    this.onTap,
   });
 }
 
@@ -304,7 +376,7 @@ class _MenuTile extends StatelessWidget {
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        onTap: () {},
+        onTap: item.onTap,
         borderRadius: showDivider
             ? BorderRadius.zero
             : const BorderRadius.vertical(bottom: Radius.circular(16)),
@@ -384,6 +456,10 @@ class _IconContainer extends StatelessWidget {
 }
 
 class _LogoutMenuItem extends StatelessWidget {
+  const _LogoutMenuItem({required this.controller});
+
+  final ProfileController controller;
+
   @override
   Widget build(BuildContext context) {
     return Material(
@@ -409,7 +485,7 @@ class _LogoutMenuItem extends StatelessWidget {
           );
 
           if (confirmed == true) {
-            await Get.find<ProfileController>().logout();
+            await controller.logout();
           }
         },
         borderRadius: BorderRadius.circular(16),
@@ -452,6 +528,116 @@ class _LogoutMenuItem extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _ProfileEditSheet extends StatefulWidget {
+  const _ProfileEditSheet({
+    required this.controller,
+  });
+
+  final ProfileController controller;
+
+  @override
+  State<_ProfileEditSheet> createState() => _ProfileEditSheetState();
+}
+
+class _ProfileEditSheetState extends State<_ProfileEditSheet> {
+  late final TextEditingController _nameController;
+  late final TextEditingController _emailController;
+
+  @override
+  void initState() {
+    super.initState();
+    _nameController =
+        TextEditingController(text: widget.controller.name.value);
+    _emailController =
+        TextEditingController(text: widget.controller.email.value);
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _emailController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+    return SingleChildScrollView(
+      padding: EdgeInsets.fromLTRB(20, 20, 20, bottomInset + 20),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'Edit Profil',
+                  style: GoogleFonts.inter(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.onSurface,
+                  ),
+                ),
+              ),
+              IconButton(
+                onPressed: () => Get.back(),
+                icon: const Icon(Icons.close),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          TextField(
+            controller: _nameController,
+            decoration: const InputDecoration(
+              labelText: 'Nama',
+              border: OutlineInputBorder(),
+            ),
+            textInputAction: TextInputAction.next,
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _emailController,
+            decoration: const InputDecoration(
+              labelText: 'Email',
+              border: OutlineInputBorder(),
+            ),
+            keyboardType: TextInputType.emailAddress,
+            textInputAction: TextInputAction.done,
+          ),
+          const SizedBox(height: 16),
+          Obx(() {
+            final isSaving = widget.controller.isSaving.value;
+            return SizedBox(
+              width: double.infinity,
+              child: FilledButton(
+                onPressed: isSaving
+                    ? null
+                    : () async {
+                        final success = await widget.controller.updateProfile(
+                          name: _nameController.text,
+                          email: _emailController.text,
+                        );
+                        if (success) {
+                          Get.back();
+                        }
+                      },
+                child: isSaving
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Text('Simpan'),
+              ),
+            );
+          }),
+        ],
       ),
     );
   }

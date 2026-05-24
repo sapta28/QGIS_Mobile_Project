@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:dio/dio.dart';
+import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../../../core/theme.dart';
 import '../../../../models/models.dart';
 import '../../../../widgets/common_widgets.dart';
+import '../../../data/services/api/user_api_service.dart';
 
 class BillboardDetailScreen extends StatelessWidget {
   final BillboardModel billboard;
@@ -378,11 +381,282 @@ class _StickyBookButton extends StatelessWidget {
         label: 'Book Now',
         trailingIcon: Icons.arrow_forward,
         onPressed: () {
-          Navigator.of(context).pushNamed(
-            '/booking-form',
-            arguments: billboard,
+          Get.bottomSheet(
+            _BookingSheet(billboard: billboard),
+            isScrollControlled: true,
+            backgroundColor: AppColors.surface,
+            shape: const RoundedRectangleBorder(
+              borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+            ),
           );
         },
+      ),
+    );
+  }
+}
+
+class _BookingSheet extends StatefulWidget {
+  const _BookingSheet({required this.billboard});
+
+  final BillboardModel billboard;
+
+  @override
+  State<_BookingSheet> createState() => _BookingSheetState();
+}
+
+class _BookingSheetState extends State<_BookingSheet> {
+  final _durationController = TextEditingController(text: '1');
+  final _notesController = TextEditingController();
+
+  DateTime? _startDate;
+  DateTime? _endDate;
+  String _durationType = 'week';
+  bool _isSubmitting = false;
+
+  UserApiService get _userApiService => Get.find<UserApiService>();
+
+  @override
+  void dispose() {
+    _durationController.dispose();
+    _notesController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _pickStartDate() async {
+    final now = DateTime.now();
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _startDate ?? now,
+      firstDate: now,
+      lastDate: DateTime(now.year + 2),
+    );
+    if (picked == null) return;
+    setState(() {
+      _startDate = picked;
+      if (_endDate != null && _endDate!.isBefore(picked)) {
+        _endDate = picked;
+      }
+    });
+  }
+
+  Future<void> _pickEndDate() async {
+    final base = _startDate ?? DateTime.now();
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _endDate ?? base,
+      firstDate: base,
+      lastDate: DateTime(base.year + 2),
+    );
+    if (picked == null) return;
+    setState(() {
+      _endDate = picked;
+    });
+  }
+
+  String _formatDate(DateTime? value) {
+    if (value == null) return '-';
+    final mm = value.month.toString().padLeft(2, '0');
+    final dd = value.day.toString().padLeft(2, '0');
+    return '${value.year}-$mm-$dd';
+  }
+
+  String _getErrorMessage(Object error, String fallback) {
+    if (error is DioException) {
+      final data = error.response?.data;
+      if (data is Map<String, dynamic>) {
+        final message = data['message'];
+        if (message is String && message.isNotEmpty) {
+          return message;
+        }
+      }
+    }
+    return fallback;
+  }
+
+  Future<void> _submitBooking() async {
+    if (_isSubmitting) return;
+    if (_startDate == null || _endDate == null) {
+      Get.snackbar('Booking', 'Tanggal mulai dan akhir wajib diisi.');
+      return;
+    }
+
+    final durationValue = int.tryParse(_durationController.text.trim()) ?? 0;
+    if (durationValue <= 0) {
+      Get.snackbar('Booking', 'Durasi harus lebih dari 0.');
+      return;
+    }
+
+    setState(() => _isSubmitting = true);
+    try {
+      await _userApiService.bookSpot(
+        spotId: widget.billboard.id,
+        startDate: _formatDate(_startDate),
+        endDate: _formatDate(_endDate),
+        durationType: _durationType,
+        durationValue: durationValue,
+        notes: _notesController.text.trim(),
+      );
+      Get.back();
+      Get.snackbar('Booking', 'Booking berhasil dibuat.');
+    } catch (error) {
+      final message =
+          _getErrorMessage(error, 'Gagal membuat booking.');
+      Get.snackbar('Booking', message);
+    } finally {
+      if (mounted) {
+        setState(() => _isSubmitting = false);
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+
+    return SingleChildScrollView(
+      padding: EdgeInsets.fromLTRB(20, 20, 20, bottomInset + 20),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'Booking Billboard',
+                  style: GoogleFonts.inter(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.onSurface,
+                  ),
+                ),
+              ),
+              IconButton(
+                onPressed: () => Get.back(),
+                icon: const Icon(Icons.close),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            widget.billboard.name,
+            style: GoogleFonts.inter(
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+              color: AppColors.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: _DateField(
+                  label: 'Mulai',
+                  value: _formatDate(_startDate),
+                  onTap: _pickStartDate,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _DateField(
+                  label: 'Selesai',
+                  value: _formatDate(_endDate),
+                  onTap: _pickEndDate,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: DropdownButtonFormField<String>(
+                  value: _durationType,
+                  decoration: const InputDecoration(
+                    labelText: 'Tipe Durasi',
+                    border: OutlineInputBorder(),
+                  ),
+                  items: const [
+                    DropdownMenuItem(value: 'day', child: Text('Hari')),
+                    DropdownMenuItem(value: 'week', child: Text('Minggu')),
+                    DropdownMenuItem(value: 'month', child: Text('Bulan')),
+                  ],
+                  onChanged: (value) {
+                    if (value == null) return;
+                    setState(() => _durationType = value);
+                  },
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: TextField(
+                  controller: _durationController,
+                  decoration: const InputDecoration(
+                    labelText: 'Durasi',
+                    border: OutlineInputBorder(),
+                  ),
+                  keyboardType: TextInputType.number,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _notesController,
+            decoration: const InputDecoration(
+              labelText: 'Catatan (opsional)',
+              border: OutlineInputBorder(),
+            ),
+            maxLines: 3,
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton(
+              onPressed: _isSubmitting ? null : _submitBooking,
+              child: _isSubmitting
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Text('Kirim Booking'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DateField extends StatelessWidget {
+  const _DateField({
+    required this.label,
+    required this.value,
+    required this.onTap,
+  });
+
+  final String label;
+  final String value;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: InputDecorator(
+        decoration: InputDecoration(
+          labelText: label,
+          border: const OutlineInputBorder(),
+        ),
+        child: Text(
+          value,
+          style: GoogleFonts.inter(
+            fontSize: 13,
+            color: value == '-' ? AppColors.outline : AppColors.onSurface,
+          ),
+        ),
       ),
     );
   }

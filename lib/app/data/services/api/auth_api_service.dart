@@ -51,6 +51,25 @@ class AuthApiService {
     return _asMap(response.data);
   }
 
+  Future<Map<String, dynamic>> updateProfile({
+    String? name,
+    String? email,
+  }) async {
+    final payload = <String, dynamic>{};
+    if (name != null && name.trim().isNotEmpty) {
+      payload['name'] = name.trim();
+    }
+    if (email != null && email.trim().isNotEmpty) {
+      payload['email'] = email.trim();
+    }
+
+    final response = await _client.patch(
+      ApiEndpoints.userUpdateMe,
+      data: payload,
+    );
+    return _asMap(response.data);
+  }
+
   Future<Map<String, dynamic>> logout() async {
     final response = await _client.post(ApiEndpoints.userLogout);
     await _tokenStore.clear();
