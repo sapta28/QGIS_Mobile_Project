@@ -43,6 +43,7 @@ class BookingModel {
   final String status; // 'active' | 'pending' | 'past'
   final int weeklyImpressions;
   final double totalPrice;
+  final String? rawStatus;
 
   const BookingModel({
     required this.id,
@@ -53,6 +54,7 @@ class BookingModel {
     required this.status,
     required this.weeklyImpressions,
     required this.totalPrice,
+    this.rawStatus,
   });
 }
 

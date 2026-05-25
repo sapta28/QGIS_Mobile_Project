@@ -1,4 +1,4 @@
-class DummyLoginPrefill {
+git remote -vclass DummyLoginPrefill {
   DummyLoginPrefill({
     required this.defaultEmail,
     required this.defaultPassword,

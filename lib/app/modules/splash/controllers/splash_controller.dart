@@ -17,7 +17,7 @@ class SplashController extends GetxController {
     _redirectTimer?.cancel();
     _redirectTimer = Timer(const Duration(milliseconds: 1800), () {
       if (Get.currentRoute == Routes.SPLASH) {
-        Get.offAllNamed(Routes.ONBOARDING);
+        Get.offAllNamed(Routes.HOME); // Temp: testing Explore
       }
     });
   }

@@ -16,6 +16,31 @@ class BookingCard extends StatelessWidget {
   });
 
   Widget _buildStatusBadge() {
+    if (booking.rawStatus == 'pending_cancel') {
+      return const StatusBadge(
+        label: 'Waiting Cancel',
+        backgroundColor: Color(0xFFFFF4EC), // Soft orange container
+        textColor: Color(0xFFFF9500),       // Vivid orange text
+        icon: Icons.cancel_outlined,
+      );
+    }
+    if (booking.rawStatus == 'cancelled') {
+      return const StatusBadge(
+        label: 'Canceled',
+        backgroundColor: Color(0xFFFFECEB), // Soft red container
+        textColor: Color(0xFFFF3B30),       // Vivid red text
+        icon: Icons.cancel_outlined,
+      );
+    }
+    if (booking.rawStatus == 'rejected') {
+      return const StatusBadge(
+        label: 'Rejected',
+        backgroundColor: Color(0xFFFFECEB), // Soft red container
+        textColor: Color(0xFFFF3B30),       // Vivid red text
+        icon: Icons.cancel_outlined,
+      );
+    }
+
     switch (booking.status) {
       case 'active':
         return StatusBadge(
@@ -296,7 +321,9 @@ class BookingCard extends StatelessWidget {
                               ),
                               const SizedBox(height: 4),
                               Text(
-                                'Awaiting Approval',
+                                booking.rawStatus == 'pending_cancel'
+                                    ? 'Awaiting Cancellation'
+                                    : 'Awaiting Approval',
                                 style: GoogleFonts.inter(
                                   fontSize: 13,
                                   color: AppColors.onSurface,
