@@ -73,7 +73,7 @@ class ExploreController extends GetxController {
 						'https://images.unsplash.com/photo-1546484396-fb3fc6f95f98?w=800&q=80',
 			),
 			type: _asString(item['category'], fallback: 'Billboard'),
-			pricePerWeek: pricePerMonth > 0 ? pricePerMonth / 4.0 : 0,
+			pricePerWeek: pricePerMonth > 0 ? pricePerMonth : 0,
 			size: _asString(item['size'], fallback: '-'),
 			traffic: _asString(item['traffic_density'], fallback: '-'),
 			dailyImpressions: _toInt(item['impressions_per_day']),
