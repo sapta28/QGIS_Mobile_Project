@@ -119,6 +119,13 @@ class _DetailSheet extends StatelessWidget {
   final BillboardModel billboard;
   const _DetailSheet({required this.billboard});
 
+  String _formatRupiah(double amount) {
+    final formatted = amount
+        .toStringAsFixed(0)
+        .replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]}.' );
+    return 'Rp $formatted';
+  }
+
   String _formatImpressions() {
     final val = billboard.dailyImpressions;
     if (val >= 1000000) return '${(val / 1000000).toStringAsFixed(1)}M';
@@ -174,7 +181,7 @@ class _DetailSheet extends StatelessWidget {
                   text: TextSpan(
                     children: [
                       TextSpan(
-                        text: '\$${(billboard.pricePerWeek).toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]},')}',
+                        text: _formatRupiah(billboard.pricePerWeek),
                         style: GoogleFonts.inter(
                           fontSize: 18,
                           fontWeight: FontWeight.w700,
@@ -183,7 +190,7 @@ class _DetailSheet extends StatelessWidget {
                         ),
                       ),
                       TextSpan(
-                        text: ' / wk',
+                        text: ' / bln',
                         style: GoogleFonts.inter(
                           fontSize: 13,
                           color: AppColors.onSurfaceVariant,
@@ -392,10 +399,6 @@ class _StickyBookButton extends StatelessWidget {
   }
 }
 
-// ──────────────────────────────────────────────────────────────────────────────
-// Full-screen Booking Screen
-// ──────────────────────────────────────────────────────────────────────────────
-
 class BookingScreen extends StatefulWidget {
   final BillboardModel billboard;
   const BookingScreen({super.key, required this.billboard});
@@ -429,7 +432,6 @@ class _BookingScreenState extends State<BookingScreen> {
     return val.toString();
   }
 
-  /// End date = start date + _months months (minus 1 day so range is inclusive)
   DateTime? get _endDate {
     if (_startDate == null) return null;
     final start = _startDate!;
@@ -459,13 +461,17 @@ class _BookingScreenState extends State<BookingScreen> {
     return '${value.year}-$mm-$dd';
   }
 
-  /// Monthly rate = pricePerWeek * 4.33 (average weeks per month)
-  double get _monthlyRate => widget.billboard.pricePerWeek * (30 / 7);
+  /// Monthly rate already comes from database.
+  double get _monthlyRate => widget.billboard.pricePerWeek;
 
   double get _totalPrice => _monthlyRate * _months;
 
-  String _formatMoney(double amount) =>
-      '\$${amount.toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]},')}';
+  String _formatMoney(double amount) {
+    final formatted = amount
+        .toStringAsFixed(0)
+        .replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]}.');
+    return 'Rp $formatted';
+  }
 
   String _getErrorMessage(Object error, String fallback) {
     if (error is DioException) {
@@ -478,7 +484,6 @@ class _BookingScreenState extends State<BookingScreen> {
     return fallback;
   }
 
-  // ── Date Picker ───────────────────────────────────────────────────────────────
 
   Future<void> _pickStartDate() async {
     final now = DateTime.now();
@@ -499,8 +504,6 @@ class _BookingScreenState extends State<BookingScreen> {
     if (picked == null) return;
     setState(() => _startDate = picked);
   }
-
-  // ── Submit ───────────────────────────────────────────────────────────────────
 
   Future<void> _submitBooking() async {
     if (_isSubmitting) return;
@@ -530,7 +533,6 @@ class _BookingScreenState extends State<BookingScreen> {
         }
       }
 
-      // Navigate to confirmation screen (replaces booking screen in stack)
       Get.off(
         () => BookingConfirmationScreen(
           billboardName: widget.billboard.name,
@@ -548,7 +550,6 @@ class _BookingScreenState extends State<BookingScreen> {
     }
   }
 
-  // ── Build ────────────────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
@@ -556,9 +557,9 @@ class _BookingScreenState extends State<BookingScreen> {
       backgroundColor: AppColors.surface,
       body: Column(
         children: [
-          // ── Top App Bar ──────────────────────────────────────────────────────
+          
           _buildHeader(context),
-          // ── Scrollable Body ──────────────────────────────────────────────────
+        
           Expanded(
             child: SingleChildScrollView(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
