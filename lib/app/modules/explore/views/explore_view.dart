@@ -15,6 +15,20 @@ import '../bindings/explore_binding.dart';
 import '../controllers/explore_controller.dart';
 import 'billboard_detail_screen.dart';
 
+enum _MapStyle { osm, streets, satellite }
+
+class _MapStyleConfig {
+  final String label;
+  final String urlTemplate;
+  final ColorFilter? colorFilter;
+
+  const _MapStyleConfig({
+    required this.label,
+    required this.urlTemplate,
+    this.colorFilter,
+  });
+}
+
 class ExploreView extends StatefulWidget {
   const ExploreView({super.key});
 
@@ -26,10 +40,32 @@ class _ExploreViewState extends State<ExploreView> {
   final MapController _mapController = MapController();
   final ExploreController _controller = Get.find<ExploreController>();
 
+  static const _mapStyles = <_MapStyle, _MapStyleConfig>{
+    _MapStyle.osm: _MapStyleConfig(
+      label: 'Standard OSM',
+      urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+    ),
+    _MapStyle.streets: _MapStyleConfig(
+      label: 'Streets',
+      urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+      colorFilter: ColorFilter.matrix([
+        0.8, 0.1, 0.1, 0, 10,
+        0.1, 0.8, 0.1, 0, 15,
+        0.1, 0.1, 0.9, 0, 30,
+        0, 0, 0, 1, 0,
+      ]),
+    ),
+    _MapStyle.satellite: _MapStyleConfig(
+      label: 'Satellite',
+      urlTemplate: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+    ),
+  };
+
   BillboardModel? _selectedBillboard;
   Position? _userPosition;
   LatLng _initialCenter = const LatLng(-7.2575, 112.7529);
   bool _didFocusBillboards = false;
+  _MapStyle _mapStyle = _MapStyle.osm;
 
   @override
   void initState() {
@@ -94,21 +130,7 @@ class _ExploreViewState extends State<ExploreView> {
                 },
               ),
               children: [
-                TileLayer(
-                  urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                  userAgentPackageName: 'com.billboardplatform.app',
-                  tileBuilder: (context, widget, tile) {
-                    return ColorFiltered(
-                      colorFilter: const ColorFilter.matrix([
-                        0.8, 0.1, 0.1, 0, 10,
-                        0.1, 0.8, 0.1, 0, 15,
-                        0.1, 0.1, 0.9, 0, 30,
-                        0, 0, 0, 1, 0,
-                      ]),
-                      child: widget,
-                    );
-                  },
-                ),
+                _buildTileLayer(),
                 MarkerLayer(
                   markers: [
                     ..._controller.billboards.map(_buildMarker),
@@ -139,8 +161,98 @@ class _ExploreViewState extends State<ExploreView> {
               ),
             ),
           ),
+          Positioned(
+            bottom: 25,
+            right: 76,
+            child: SafeArea(
+              child: CircleIconButton(
+                icon: Icons.layers_outlined,
+                onPressed: _openMapStyleSheet,
+                backgroundColor: Colors.white,
+                iconColor: AppColors.primary,
+                size: 48,
+              ),
+            ),
+          ),
         ],
       ),
+    );
+  }
+
+  TileLayer _buildTileLayer() {
+    final config = _mapStyles[_mapStyle]!;
+    return TileLayer(
+      urlTemplate: config.urlTemplate,
+      userAgentPackageName: 'com.billboardplatform.app',
+      tileBuilder: config.colorFilter == null
+          ? null
+          : (context, widget, tile) =>
+              ColorFiltered(colorFilter: config.colorFilter!, child: widget),
+    );
+  }
+
+  void _openMapStyleSheet() {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    margin: const EdgeInsets.only(bottom: 12),
+                    decoration: BoxDecoration(
+                      color: AppColors.outlineVariant,
+                      borderRadius: BorderRadius.circular(99),
+                    ),
+                  ),
+                ),
+                Text(
+                  'Map Style',
+                  style: GoogleFonts.inter(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.onSurface,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                ..._mapStyles.entries.map((entry) {
+                  final isActive = entry.key == _mapStyle;
+                  return ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: Icon(
+                      isActive ? Icons.radio_button_checked : Icons.radio_button_off,
+                      color: isActive ? AppColors.primary : AppColors.outline,
+                    ),
+                    title: Text(
+                      entry.value.label,
+                      style: GoogleFonts.inter(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.onSurface,
+                      ),
+                    ),
+                    onTap: () {
+                      setState(() => _mapStyle = entry.key);
+                      Navigator.of(context).pop();
+                    },
+                  );
+                }),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -271,7 +383,7 @@ class _ExploreViewState extends State<ExploreView> {
     return Marker(
       point: LatLng(billboard.lat, billboard.lng),
       width: 360,
-      height: 220,
+      height: 240,
       alignment: Alignment.topCenter,
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -324,7 +436,7 @@ class _ExploreViewState extends State<ExploreView> {
               ),
             ],
           ),
-          const SizedBox(height: 40),
+          const SizedBox(height: 32),
         ],
       ),
     );
@@ -410,6 +522,24 @@ class _SearchBar extends StatelessWidget {
               ),
             ),
           ),
+          const SizedBox(width: 8),
+          Container(
+            width: 32,
+            height: 32,
+            decoration: BoxDecoration(
+              color: AppColors.surfaceContainerHigh,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: AppColors.outlineVariant),
+            ),
+            child: IconButton(
+              padding: EdgeInsets.zero,
+              icon: const Icon(Icons.tune, size: 18),
+              color: AppColors.onSurfaceVariant,
+              onPressed: () {
+                Get.snackbar('Filter', 'Filter belum tersedia.');
+              },
+            ),
+          ),
         ],
       ),
     );
@@ -435,21 +565,28 @@ class _PropertyPreviewCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isPremium = billboard.pricePerWeek >= 50000000;
+    final availabilityColor = billboard.isAvailable
+        ? const Color(0xFF22C55E)
+        : AppColors.outline;
+    final availabilityBg = billboard.isAvailable
+        ? const Color(0xFFE7F8EF)
+        : AppColors.surfaceContainerHigh;
 
     return GestureDetector(
       onTap: onTap,
       child: Container(
         width: 350,
-        padding: const EdgeInsets.all(8),
+        padding: const EdgeInsets.all(10),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(24),
         ),
         child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Container(
               width: 96,
-              height: 96,
+              height: 128,
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(16),
               ),
@@ -461,7 +598,7 @@ class _PropertyPreviewCard extends StatelessWidget {
                         ? billboard.imageUrl
                         : 'https://images.unsplash.com/photo-1546484396-fb3fc6f95f98?w=800&q=80',
                     width: 96,
-                    height: 96,
+                    height: 128,
                     fit: BoxFit.cover,
                     placeholder: (_, __) =>
                         Container(color: AppColors.surfaceContainerHigh),
@@ -508,13 +645,13 @@ class _PropertyPreviewCard extends StatelessWidget {
                 ],
               ),
             ),
-            const SizedBox(width: 16),
+            const SizedBox(width: 12),
             Expanded(
               child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 8),
+                padding: const EdgeInsets.symmetric(vertical: 2),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  mainAxisAlignment: MainAxisAlignment.start,
                   children: [
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -527,27 +664,27 @@ class _PropertyPreviewCard extends StatelessWidget {
                               child: Text(
                                 billboard.name,
                                 style: GoogleFonts.inter(
-                                  fontSize: 16,
+                                  fontSize: 15,
                                   fontWeight: FontWeight.w700,
                                   color: AppColors.onSurface,
                                 ),
-                                maxLines: 1,
+                                maxLines: 2,
                                 overflow: TextOverflow.ellipsis,
                               ),
                             ),
                             const Icon(
                               Icons.bookmark_border,
-                              size: 20,
+                              size: 18,
                               color: AppColors.outline,
                             ),
                           ],
                         ),
-                        const SizedBox(height: 2),
+                        const SizedBox(height: 4),
                         Row(
                           children: [
                             const Icon(
                               Icons.location_on,
-                              size: 14,
+                              size: 13,
                               color: AppColors.onSurfaceVariant,
                             ),
                             const SizedBox(width: 4),
@@ -555,7 +692,7 @@ class _PropertyPreviewCard extends StatelessWidget {
                               child: Text(
                                 billboard.location,
                                 style: GoogleFonts.inter(
-                                  fontSize: 12,
+                                  fontSize: 11,
                                   color: AppColors.onSurfaceVariant,
                                 ),
                                 maxLines: 1,
@@ -564,55 +701,76 @@ class _PropertyPreviewCard extends StatelessWidget {
                             ),
                           ],
                         ),
+                        const SizedBox(height: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: availabilityBg,
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Container(
+                                width: 6,
+                                height: 6,
+                                decoration: BoxDecoration(
+                                  color: availabilityColor,
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                billboard.isAvailable
+                                    ? 'Available Now'
+                                    : 'Booked',
+                                style: GoogleFonts.inter(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                  color: availabilityColor,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                       ],
                     ),
+                    const SizedBox(height: 10),
+                    const Divider(height: 1, color: AppColors.outlineVariant),
                     const SizedBox(height: 8),
                     Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
                         Column(
-                          crossAxisAlignment: CrossAxisAlignment.end,
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
+                            const SizedBox(height: 2),
                             Text(
-                              'AVAILABILITY',
-                              style: GoogleFonts.inter(
-                                fontSize: 10,
-                                fontWeight: FontWeight.w600,
-                                color: AppColors.outline,
-                              ),
-                            ),
-                            Text(
-                              billboard.isAvailable ? 'Available Now' : 'Booked',
+                              '${_formatRupiah(billboard.pricePerWeek)} / month',
                               style: GoogleFonts.inter(
                                 fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                                color: billboard.isAvailable
-                                    ? AppColors.secondary
-                                    : AppColors.outline,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.primary,
                               ),
                             ),
                           ],
                         ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          'Harga / Bulan',
-                          style: GoogleFonts.inter(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.outline,
-                          ),
-                        ),
-                        Text(
-                          '${_formatRupiah(billboard.pricePerWeek)} / bln',
-                          style: GoogleFonts.inter(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.primary,
+                        InkWell(
+                          onTap: onTap,
+                          borderRadius: BorderRadius.circular(14),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 6,
+                            ),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFEFF4FF),
+                              borderRadius: BorderRadius.circular(14),
+                            ),
                           ),
                         ),
                       ],
