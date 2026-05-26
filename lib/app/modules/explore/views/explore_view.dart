@@ -145,7 +145,7 @@ class _ExploreViewState extends State<ExploreView> {
   }
 
   Marker _buildMarker(BillboardModel billboard) {
-    final isPremium = billboard.pricePerWeek > 3000;
+    final isPremium = billboard.pricePerWeek >= 50000000;
     final isAvailable = billboard.isAvailable;
 
     Color markerColor;
@@ -271,7 +271,7 @@ class _ExploreViewState extends State<ExploreView> {
     return Marker(
       point: LatLng(billboard.lat, billboard.lng),
       width: 360,
-      height: 200,
+      height: 220,
       alignment: Alignment.topCenter,
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -324,7 +324,7 @@ class _ExploreViewState extends State<ExploreView> {
               ),
             ],
           ),
-          const SizedBox(height: 55),
+          const SizedBox(height: 40),
         ],
       ),
     );
@@ -425,16 +425,16 @@ class _PropertyPreviewCard extends StatelessWidget {
     required this.onTap,
   });
 
-  String _formatImpressions() {
-    final val = billboard.dailyImpressions;
-    if (val >= 1000000) return '${(val / 1000000).toStringAsFixed(1)}M';
-    if (val >= 1000) return '${(val / 1000).round()}k';
-    return val.toString();
+  String _formatRupiah(double amount) {
+    final formatted = amount
+        .toStringAsFixed(0)
+        .replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]}.');
+    return 'Rp $formatted';
   }
 
   @override
   Widget build(BuildContext context) {
-    final isPremium = billboard.pricePerWeek > 3000;
+    final isPremium = billboard.pricePerWeek >= 50000000;
 
     return GestureDetector(
       onTap: onTap,
@@ -568,30 +568,8 @@ class _PropertyPreviewCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 8),
                     Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      crossAxisAlignment: CrossAxisAlignment.end,
+                      mainAxisAlignment: MainAxisAlignment.end,
                       children: [
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'EST. DAILY IMPR.',
-                              style: GoogleFonts.inter(
-                                fontSize: 10,
-                                fontWeight: FontWeight.w600,
-                                color: AppColors.outline,
-                              ),
-                            ),
-                            Text(
-                              _formatImpressions(),
-                              style: GoogleFonts.inter(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w700,
-                                color: AppColors.primary,
-                              ),
-                            ),
-                          ],
-                        ),
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.end,
                           children: [
@@ -614,6 +592,28 @@ class _PropertyPreviewCard extends StatelessWidget {
                               ),
                             ),
                           ],
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Harga / Bulan',
+                          style: GoogleFonts.inter(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.outline,
+                          ),
+                        ),
+                        Text(
+                          '${_formatRupiah(billboard.pricePerWeek)} / bln',
+                          style: GoogleFonts.inter(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.primary,
+                          ),
                         ),
                       ],
                     ),

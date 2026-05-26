@@ -4,6 +4,8 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../../../../core/theme.dart';
 import '../controllers/profile_controller.dart';
+import 'personal_information_view.dart';
+import 'payment_methods_view.dart';
 
 class ProfileView extends GetView<ProfileController> {
   const ProfileView({super.key});
@@ -57,12 +59,13 @@ class ProfileView extends GetView<ProfileController> {
                     icon: Icons.person_outline,
                     label: 'Personal Information',
                     subtitle: 'Update your name, email, and phone',
-                    onTap: () => _showEditProfileSheet(context, controller),
+                    onTap: () => Get.to(() => const PersonalInformationView()),
                   ),
-                  const ProfileMenuItem(
+                  ProfileMenuItem(
                     icon: Icons.credit_card_outlined,
                     label: 'Payment Methods',
                     subtitle: 'Manage cards and billing details',
+                    onTap: () => Get.to(() => const PaymentMethodsView()),
                   ),
                   const ProfileMenuItem(
                     icon: Icons.notifications_outlined,

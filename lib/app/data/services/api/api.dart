@@ -1,13 +1,9 @@
 class ApiEndpoints {
   ApiEndpoints._();
 
-    // Override with:
-    // flutter run --dart-define=API_BASE_URL=http://192.168.x.x:8000/api
-    // For simulator, localhost/127.0.0.1 is fine. For a physical iPhone,
-    // use your Mac's LAN IP or a public tunnel URL.
     static const String baseUrl = String.fromEnvironment(
         'API_BASE_URL',
-        defaultValue: 'http://192.168.68.90:8000/api',
+        defaultValue: 'http://192.168.68.105:8000/api',
     );
 
   // General

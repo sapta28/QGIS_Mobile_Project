@@ -16,9 +16,7 @@ class ActivityView extends StatefulWidget {
 }
 
 class _ActivityViewState extends State<ActivityView> {
-  int _selectedTab = 0;
-
-  static const _tabs = ['Active', 'Pending', 'Past'];
+  static const _tabs = ['All', 'Active', 'Pending', 'Past'];
 
   ActivityController get _controller => Get.find<ActivityController>();
 
@@ -31,10 +29,12 @@ class _ActivityViewState extends State<ActivityView> {
   String? _statusForTab(int index) {
     switch (index) {
       case 0:
-        return 'active';
+        return null; // All
       case 1:
-        return 'pending';
+        return 'active';
       case 2:
+        return 'pending';
+      case 3:
         return 'completed';
       default:
         return null;
@@ -42,7 +42,6 @@ class _ActivityViewState extends State<ActivityView> {
   }
 
   Future<void> _loadTab(int index) async {
-    setState(() => _selectedTab = index);
     await _controller.fetchActivities(status: _statusForTab(index));
   }
 
@@ -51,7 +50,7 @@ class _ActivityViewState extends State<ActivityView> {
     super.initState();
     _ensureDependencies();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _controller.fetchActivities(status: 'active');
+      _controller.fetchActivities(status: null);
     });
   }
 
@@ -108,38 +107,41 @@ class _ActivityViewState extends State<ActivityView> {
               ),
             ),
             const SizedBox(height: 16),
-            SizedBox(
-              height: 40,
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                itemCount: _tabs.length,
-                separatorBuilder: (_, __) => const SizedBox(width: 8),
-                itemBuilder: (context, index) {
-                  final isSelected = _selectedTab == index;
-                  return GestureDetector(
-                    onTap: () => _loadTab(index),
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 180),
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                      decoration: BoxDecoration(
-                        color: isSelected ? AppColors.primary : AppColors.surface,
-                        borderRadius: BorderRadius.circular(20),
-                        border: isSelected ? null : Border.all(color: AppColors.outlineVariant),
-                      ),
-                      child: Text(
-                        _tabs[index],
-                        style: GoogleFonts.inter(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: isSelected ? AppColors.onPrimary : AppColors.onSurfaceVariant,
+            Obx(() {
+              final activeIndex = _controller.selectedTab.value;
+              return SizedBox(
+                height: 40,
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  itemCount: _tabs.length,
+                  separatorBuilder: (_, __) => const SizedBox(width: 8),
+                  itemBuilder: (context, index) {
+                    final isSelected = activeIndex == index;
+                    return GestureDetector(
+                      onTap: () => _loadTab(index),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 180),
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: isSelected ? AppColors.primary : AppColors.surface,
+                          borderRadius: BorderRadius.circular(20),
+                          border: isSelected ? null : Border.all(color: AppColors.outlineVariant),
+                        ),
+                        child: Text(
+                          _tabs[index],
+                          style: GoogleFonts.inter(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: isSelected ? AppColors.onPrimary : AppColors.onSurfaceVariant,
+                          ),
                         ),
                       ),
-                    ),
-                  );
-                },
-              ),
-            ),
+                    );
+                  },
+                ),
+              );
+            }),
             const SizedBox(height: 16),
             Expanded(
               child: Obx(() {
@@ -157,15 +159,16 @@ class _ActivityViewState extends State<ActivityView> {
 
                 final bookings = _controller.bookings;
                 if (bookings.isEmpty) {
+                  final tabLabel = _tabs[_controller.selectedTab.value].toLowerCase();
                   return _EmptyState(
-                    title: 'No ${_tabs[_selectedTab]} bookings',
+                    title: tabLabel == 'all' ? 'No bookings' : 'No $tabLabel bookings',
                     subtitle: 'Booking pada tab ini belum tersedia.',
                     icon: Icons.calendar_today_outlined,
                   );
                 }
 
                 return RefreshIndicator(
-                  onRefresh: () => _controller.fetchActivities(status: _statusForTab(_selectedTab)),
+                  onRefresh: () => _controller.fetchActivities(status: _statusForTab(_controller.selectedTab.value)),
                   child: ListView.separated(
                     physics: const AlwaysScrollableScrollPhysics(),
                     padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),

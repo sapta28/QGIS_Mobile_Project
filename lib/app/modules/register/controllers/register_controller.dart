@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 import '../../../data/services/api/auth_api_service.dart';
-import '../../../routes/app_pages.dart';
 
 class RegisterController extends GetxController {
   RegisterController(this._authApiService);
@@ -46,18 +45,21 @@ class RegisterController extends GetxController {
       );
 
       final message = result['message']?.toString() ?? 'Registrasi berhasil.';
-      Get.snackbar('Registrasi berhasil', message);
-      Get.offAllNamed(Routes.LOGIN);
+      FocusManager.instance.primaryFocus?.unfocus();
+      Get.back(result: message);
     } catch (error) {
       final message = _getErrorMessage(error, 'Registrasi gagal. Coba lagi.');
       Get.snackbar('Registrasi gagal', message);
     } finally {
-      isLoading.value = false;
+      if (!isClosed) {
+        isLoading.value = false;
+      }
     }
   }
 
   void goToLogin() {
-    Get.offAllNamed(Routes.LOGIN);
+    FocusManager.instance.primaryFocus?.unfocus();
+    Get.back();
   }
 
   String? validateEmailOrNib(String? value) {

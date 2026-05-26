@@ -16,6 +16,7 @@ class ActivityController extends GetxController {
 	final isSubmitting = false.obs;
 	final errorMessage = ''.obs;
 	final selectedStatus = 'all'.obs;
+	final selectedTab = 0.obs;
 
 	static const String _fallbackImageUrl =
 			'https://images.unsplash.com/photo-1546484396-fb3fc6f95f98?w=800&q=80';
@@ -31,6 +32,15 @@ class ActivityController extends GetxController {
 			return;
 		}
 		selectedStatus.value = status ?? 'all';
+		if (status == null || status == 'all') {
+			selectedTab.value = 0;
+		} else if (status == 'active') {
+			selectedTab.value = 1;
+		} else if (status == 'pending') {
+			selectedTab.value = 2;
+		} else if (status == 'completed' || status == 'past') {
+			selectedTab.value = 3;
+		}
 
 		final token = _tokenStore.accessToken;
 		if (token == null || token.isEmpty) {
@@ -114,7 +124,8 @@ class ActivityController extends GetxController {
 	BookingModel _mapBooking(Map<String, dynamic> item) {
 		final spot = item['spot'];
 		final spotMap = spot is Map ? spot : <String, dynamic>{};
-		final status = _mapStatus(_asString(item['status']));
+		final rawStatus = _asString(item['status']);
+		final status = _mapStatus(rawStatus);
 
 		return BookingModel(
 			id: _asString(item['id']),
@@ -141,6 +152,7 @@ class ActivityController extends GetxController {
 			status: status,
 			weeklyImpressions: _toInt(item['impressions_per_day']) * 7,
 			totalPrice: _toDouble(item['total_price']),
+			rawStatus: rawStatus,
 		);
 	}
 
@@ -159,9 +171,10 @@ class ActivityController extends GetxController {
 			case 'pending':
 			case 'pending_payment':
 			case 'waiting_confirmation':
+			case 'pending_cancel': // Map pending_cancel to pending tab
 				return 'pending';
-			case 'completed':
 			case 'cancelled':
+			case 'completed':
 			case 'rejected':
 				return 'past';
 			default:

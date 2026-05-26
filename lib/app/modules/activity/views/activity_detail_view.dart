@@ -94,7 +94,10 @@ class _ActivityDetailViewState extends State<ActivityDetailView> {
               style: GoogleFonts.inter(color: AppColors.onSurfaceVariant),
             ),
             const SizedBox(height: 16),
-            _InfoRow(label: 'Status', value: booking.status.toUpperCase()),
+            _InfoRow(
+              label: 'Status',
+              value: (booking.rawStatus ?? booking.status).toUpperCase().replaceAll('_', ' '),
+            ),
             _InfoRow(label: 'Reference', value: booking.referenceId),
             _InfoRow(
               label: 'Period',
@@ -104,7 +107,7 @@ class _ActivityDetailViewState extends State<ActivityDetailView> {
             _InfoRow(label: 'Total Price', value: 'Rp ${booking.totalPrice.toStringAsFixed(0)}'),
             _InfoRow(label: 'Weekly Impressions', value: booking.weeklyImpressions.toString()),
             const SizedBox(height: 24),
-            if (booking.status == 'pending')
+            if (booking.status == 'pending' && booking.rawStatus != 'cancelled' && booking.rawStatus != 'pending_cancel')
               Form(
                 key: _formKey,
                 child: TextFormField(
@@ -122,8 +125,8 @@ class _ActivityDetailViewState extends State<ActivityDetailView> {
                   maxLines: 3,
                 ),
               ),
-            if (booking.status == 'pending') const SizedBox(height: 16),
-            if (booking.status == 'pending')
+            if (booking.status == 'pending' && booking.rawStatus != 'cancelled' && booking.rawStatus != 'pending_cancel') const SizedBox(height: 16),
+            if (booking.status == 'pending' && booking.rawStatus != 'cancelled' && booking.rawStatus != 'pending_cancel')
               Obx(() {
                 return SizedBox(
                   width: double.infinity,
