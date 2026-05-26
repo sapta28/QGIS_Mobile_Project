@@ -425,13 +425,6 @@ class _PropertyPreviewCard extends StatelessWidget {
     required this.onTap,
   });
 
-  String _formatImpressions() {
-    final val = billboard.dailyImpressions;
-    if (val >= 1000000) return '${(val / 1000000).toStringAsFixed(1)}M';
-    if (val >= 1000) return '${(val / 1000).round()}k';
-    return val.toString();
-  }
-
   String _formatRupiah(double amount) {
     final formatted = amount
         .toStringAsFixed(0)
@@ -575,30 +568,8 @@ class _PropertyPreviewCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 8),
                     Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      crossAxisAlignment: CrossAxisAlignment.end,
+                      mainAxisAlignment: MainAxisAlignment.end,
                       children: [
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'EST. DAILY IMPR.',
-                              style: GoogleFonts.inter(
-                                fontSize: 10,
-                                fontWeight: FontWeight.w600,
-                                color: AppColors.outline,
-                              ),
-                            ),
-                            Text(
-                              _formatImpressions(),
-                              style: GoogleFonts.inter(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w700,
-                                color: AppColors.primary,
-                              ),
-                            ),
-                          ],
-                        ),
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.end,
                           children: [

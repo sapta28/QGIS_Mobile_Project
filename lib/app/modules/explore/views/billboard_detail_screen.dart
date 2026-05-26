@@ -126,12 +126,6 @@ class _DetailSheet extends StatelessWidget {
     return 'Rp $formatted';
   }
 
-  String _formatImpressions() {
-    final val = billboard.dailyImpressions;
-    if (val >= 1000000) return '${(val / 1000000).toStringAsFixed(1)}M';
-    if (val >= 1000) return '${(val / 1000).round()}k';
-    return val.toString();
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -264,7 +258,7 @@ class _DetailSheet extends StatelessWidget {
                     iconColor: AppColors.secondary,
                     label: 'TRAFFIC',
                     value: billboard.traffic,
-                    subtitle: '${_formatImpressions()} Daily Impr.',
+                    subtitle: '',
                   ),
                 ),
               ],
@@ -349,14 +343,16 @@ class BillboardSpecCard extends StatelessWidget {
               color: AppColors.onSurface,
             ),
           ),
-          const SizedBox(height: 2),
-          Text(
-            subtitle,
-            style: GoogleFonts.inter(
-              fontSize: 13,
-              color: AppColors.onSurfaceVariant,
+          if (subtitle.isNotEmpty) ...[
+            const SizedBox(height: 2),
+            Text(
+              subtitle,
+              style: GoogleFonts.inter(
+                fontSize: 13,
+                color: AppColors.onSurfaceVariant,
+              ),
             ),
-          ),
+          ],
         ],
       ),
     );
@@ -425,12 +421,6 @@ class _BookingScreenState extends State<BookingScreen> {
 
   // ── Helpers ─────────────────────────────────────────────────────────────────
 
-  String _formatImpressions() {
-    final val = widget.billboard.dailyImpressions;
-    if (val >= 1000000) return '${(val / 1000000).toStringAsFixed(1)}M';
-    if (val >= 1000) return '${(val / 1000).round()}k';
-    return val.toString();
-  }
 
   DateTime? get _endDate {
     if (_startDate == null) return null;
@@ -711,22 +701,6 @@ class _BookingScreenState extends State<BookingScreen> {
                   overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 4),
-                // Impressions
-                Row(
-                  children: [
-                    const Icon(Icons.visibility,
-                        size: 14, color: AppColors.primary),
-                    const SizedBox(width: 4),
-                    Text(
-                      '${_formatImpressions()} / day',
-                      style: GoogleFonts.inter(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.primary,
-                      ),
-                    ),
-                  ],
-                ),
               ],
             ),
           ),
