@@ -40,13 +40,16 @@ class LoginController extends GetxController {
 
       final message = result['message']?.toString() ?? 'Login berhasil.';
       Get.snackbar('Login berhasil', message);
+      FocusManager.instance.primaryFocus?.unfocus();
       Get.offAllNamed(Routes.HOME);
     } catch (error) {
       final message = _getErrorMessage(error, 'Login gagal. Coba lagi.');
       infoMessage.value = message;
       Get.snackbar('Login gagal', message);
     } finally {
-      isLoading.value = false;
+      if (!isClosed) {
+        isLoading.value = false;
+      }
     }
   }
 
@@ -62,8 +65,12 @@ class LoginController extends GetxController {
     Get.snackbar('Informasi', 'Login biometrik masih dummy.');
   }
 
-  void onRegisterCompany() {
-    Get.toNamed(Routes.REGISTER);
+  Future<void> onRegisterCompany() async {
+    FocusManager.instance.primaryFocus?.unfocus();
+    final result = await Get.toNamed(Routes.REGISTER);
+    if (result is String && result.trim().isNotEmpty) {
+      Get.snackbar('Registrasi berhasil', result);
+    }
   }
 
   void toggleRememberMe() {
