@@ -184,7 +184,7 @@ class _DetailSheet extends StatelessWidget {
                         ),
                       ),
                       TextSpan(
-                        text: ' / bln',
+                        text: ' / month',
                         style: GoogleFonts.inter(
                           fontSize: 13,
                           color: AppColors.onSurfaceVariant,
