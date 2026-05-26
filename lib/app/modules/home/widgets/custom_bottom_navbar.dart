@@ -10,91 +10,98 @@ class CustomBottomNavbar extends StatelessWidget {
     required this.onItemTapped,
   }) : super(key: key);
 
-  static const Color _primary = Color(0xFF1E88E5);
+  // Warna hijau untuk background kapsul utama
+  static const Color _greenBackground = Color(0xFF20C583);
+  
+  // Warna ikon reguler (putih)
+  static const Color _iconActive = Colors.white;
+  static const Color _iconInactive = Colors.white60;
 
   @override
   Widget build(BuildContext context) {
-    return BottomAppBar(
-      padding: EdgeInsets.zero,
-      color: Colors.white,
-      shape: const CircularNotchedRectangle(),
-      notchMargin: 6.0,
-      elevation: 20,
-      shadowColor: Colors.black.withOpacity(0.1),
-      clipBehavior: Clip.antiAlias,
-      child: SizedBox(
-        height: 56,
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: [
-            Expanded(
-              child: _navItem(Icons.home_outlined, Icons.home_rounded, 'Home', 0),
-            ),
-            Expanded(
-              child: _navItem(Icons.receipt_long_outlined, Icons.receipt_long_rounded, 'Activity', 1),
-            ),
-            Expanded(
-              child: _exploreLabel(),
-            ),
-            Expanded(
-              child: _navItem(Icons.inbox_outlined, Icons.inbox_rounded, 'Inbox', 3),
-            ),
-            Expanded(
-              child: _navItem(Icons.person_outline_rounded, Icons.person_rounded, 'Profile', 4),
-            ),
-          ],
+    return SafeArea(
+      bottom: false,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
+        child: Container(
+          height: 64, 
+          decoration: BoxDecoration(
+            color: _greenBackground, 
+            borderRadius: BorderRadius.circular(40),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.12),
+                blurRadius: 16,
+                offset: const Offset(0, 8),
+              ),
+            ],
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              // 0. Home
+              _buildNavItem(Icons.home_outlined, Icons.home_rounded, 0),
+              
+              // 1. Activity
+              _buildNavItem(Icons.receipt_long_outlined, Icons.receipt_long_rounded, 1),
+              
+              // 2. Explore (Tengah - Lingkaran Putih Besar)
+              _buildCenterItem(),
+              
+              // 3. Chat
+              _buildNavItem(Icons.chat_bubble_outline_rounded, Icons.chat_bubble_rounded, 3),
+              
+              // 4. Profile
+              _buildNavItem(Icons.person_outline_rounded, Icons.person_rounded, 4),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _navItem(IconData outline, IconData solid, String label, int index) {
+  // Widget untuk menu biasa (icon only)
+  Widget _buildNavItem(IconData outline, IconData solid, int index) {
     final bool isActive = selectedIndex == index;
-    final Color color = isActive ? _primary : const Color(0xFF94A3B8);
+    final Color color = isActive ? _iconActive : _iconInactive;
 
     return GestureDetector(
       onTap: () => onItemTapped(index),
       behavior: HitTestBehavior.opaque,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(isActive ? solid : outline, color: color, size: 24),
-          const SizedBox(height: 2),
-          Text(
-            label,
-            style: TextStyle(
-              color: color,
-              fontSize: 10,
-              fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
-            ),
-          ),
-        ],
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        child: Icon(
+          isActive ? solid : outline,
+          color: color,
+          size: 26,
+        ),
       ),
     );
   }
 
-  Widget _exploreLabel() {
-    final bool isActive = selectedIndex == 2;
-
+  // Widget khusus untuk menu Explore di tengah (Lingkaran Putih Besar)
+  Widget _buildCenterItem() {
     return GestureDetector(
       onTap: () => onItemTapped(2),
-      behavior: HitTestBehavior.opaque,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const SizedBox(height: 24),
-          const SizedBox(height: 2),
-          Text(
-            'Explore',
-            style: TextStyle(
-              color: isActive ? _primary : const Color(0xFF94A3B8),
-              fontSize: 10,
-              fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
+      child: Container(
+        width: 48,
+        height: 48,
+        decoration: BoxDecoration(
+          color: Colors.white, // Lingkaran besar berwarna putih
+          shape: BoxShape.circle,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 8,
+              offset: const Offset(0, 4),
             ),
-          ),
-        ],
+          ],
+        ),
+        child: const Icon(
+          Icons.explore, 
+          color: _greenBackground, // Ikon kompas berwarna hijau agar kontras dengan latar putihnya
+          size: 28, 
+        ),
       ),
     );
   }
