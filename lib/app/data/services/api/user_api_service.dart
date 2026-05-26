@@ -40,12 +40,18 @@ class UserApiService {
     return _asMap(response.data);
   }
 
+  Future<Map<String, dynamic>> getPaymentChannels() async {
+    final response = await _client.get(ApiEndpoints.userPaymentChannels);
+    return _asMap(response.data);
+  }
+
   Future<Map<String, dynamic>> bookSpot({
     required String spotId,
     required String startDate,
     required String endDate,
     required String durationType,
     required int durationValue,
+    required String paymentMethod,
     String? notes,
   }) async {
     final response = await _client.post(
@@ -55,6 +61,7 @@ class UserApiService {
         'end_date': endDate,
         'duration_type': durationType,
         'duration_value': durationValue,
+        'payment_method': paymentMethod,
         if (notes != null && notes.isNotEmpty) 'notes': notes,
       },
     );

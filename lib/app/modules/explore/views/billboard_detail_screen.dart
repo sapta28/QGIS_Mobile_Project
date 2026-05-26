@@ -8,6 +8,7 @@ import '../../../../models/models.dart';
 import '../../../../widgets/common_widgets.dart';
 import '../../../data/services/api/user_api_service.dart';
 import 'booking_confirmation_screen.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class BillboardDetailScreen extends StatelessWidget {
   final BillboardModel billboard;
@@ -414,8 +415,32 @@ class _BookingScreenState extends State<BookingScreen> {
   int _months = 1;          // jumlah bulan sewa
   bool _isSubmitting = false;
   String? _uploadedFileName;
+  
+  List<dynamic> _paymentChannels = [];
+  String? _selectedPaymentMethod;
+  bool _isLoadingChannels = true;
 
   UserApiService get _userApiService => Get.find<UserApiService>();
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchPaymentChannels();
+  }
+
+  Future<void> _fetchPaymentChannels() async {
+    try {
+      final res = await _userApiService.getPaymentChannels();
+      if (res['data'] is List) {
+        setState(() {
+          _paymentChannels = (res['data'] as List).where((c) => c['active'] == true).toList();
+          _isLoadingChannels = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) setState(() => _isLoadingChannels = false);
+    }
+  }
 
   @override
   void dispose() {
@@ -512,6 +537,11 @@ class _BookingScreenState extends State<BookingScreen> {
           snackPosition: SnackPosition.BOTTOM);
       return;
     }
+    if (_selectedPaymentMethod == null) {
+      Get.snackbar('Booking', 'Pilih metode pembayaran terlebih dahulu.',
+          snackPosition: SnackPosition.BOTTOM);
+      return;
+    }
 
     setState(() => _isSubmitting = true);
     try {
@@ -521,15 +551,27 @@ class _BookingScreenState extends State<BookingScreen> {
         endDate: _apiDate(_endDate),
         durationType: 'monthly',
         durationValue: _months,
+        paymentMethod: _selectedPaymentMethod!,
         notes: _notesController.text.trim(),
       );
 
+      String? checkoutUrl;
       // Extract reference ID from response if available
       String refId = 'BKG-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}';
       if (response is Map<String, dynamic>) {
+        if (response.containsKey('checkout_url')) {
+          checkoutUrl = response['checkout_url'] as String?;
+        }
         final data = response['data'];
         if (data is Map<String, dynamic>) {
           refId = (data['reference_id'] ?? data['id']?.toString() ?? refId).toString();
+        }
+      }
+
+      if (checkoutUrl != null && checkoutUrl.isNotEmpty) {
+        final uri = Uri.parse(checkoutUrl);
+        if (await canLaunchUrl(uri)) {
+          await launchUrl(uri, mode: LaunchMode.externalApplication);
         }
       }
 
@@ -574,6 +616,8 @@ class _BookingScreenState extends State<BookingScreen> {
                   const SizedBox(height: 24),
                   _buildAdditionalNotes(),
                   const SizedBox(height: 24),
+                  _buildPaymentMethods(),
+                  const SizedBox(height: 24),
                   _buildPriceSummary(),
                   const SizedBox(height: 24),
                   _buildConfirmButton(),
@@ -588,6 +632,47 @@ class _BookingScreenState extends State<BookingScreen> {
   }
 
   // ── Header ───────────────────────────────────────────────────────────────────
+
+  Widget _buildPaymentMethods() {
+    if (_isLoadingChannels) {
+      return const Center(child: CircularProgressIndicator(color: AppColors.primary));
+    }
+    if (_paymentChannels.isEmpty) {
+      return Text('Tidak ada metode pembayaran tersedia', style: GoogleFonts.inter(color: AppColors.error));
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Metode Pembayaran', style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w600)),
+        const SizedBox(height: 12),
+        ..._paymentChannels.map((channel) {
+          final code = channel['code'];
+          final name = channel['name'];
+          final isSelected = _selectedPaymentMethod == code;
+          return InkWell(
+            onTap: () => setState(() => _selectedPaymentMethod = code),
+            child: Container(
+              margin: const EdgeInsets.only(bottom: 8),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                border: Border.all(color: isSelected ? AppColors.primary : AppColors.outlineVariant),
+                borderRadius: BorderRadius.circular(8),
+                color: isSelected ? AppColors.primary.withOpacity(0.05) : Colors.transparent,
+              ),
+              child: Row(
+                children: [
+                  Icon(isSelected ? Icons.radio_button_checked : Icons.radio_button_unchecked, 
+                       color: isSelected ? AppColors.primary : AppColors.outline),
+                  const SizedBox(width: 12),
+                  Text(name, style: GoogleFonts.inter(fontSize: 14)),
+                ],
+              ),
+            ),
+          );
+        }).toList(),
+      ],
+    );
+  }
 
   Widget _buildHeader(BuildContext context) {
     return Container(

@@ -3,7 +3,7 @@ class ApiEndpoints {
 
     static const String baseUrl = String.fromEnvironment(
         'API_BASE_URL',
-        defaultValue: 'http://192.168.68.105:8000/api',
+        defaultValue: 'http://10.253.128.189:8000/api',
     );
 
   // General
@@ -23,6 +23,7 @@ class ApiEndpoints {
   static const String userUpdateMe = "$baseUrl/v1/user/me";
   static const String userLogout = "$baseUrl/v1/user/logout";
   static const String userDashboardSummary = "$baseUrl/v1/user/dashboard/summary";
+  static const String userPaymentChannels = "$baseUrl/v1/user/payment-channels";
 
   static String userBookSpot(String id) => "$baseUrl/v1/user/spots/$id/book";
   static const String userActivities = "$baseUrl/v1/user/activities";
