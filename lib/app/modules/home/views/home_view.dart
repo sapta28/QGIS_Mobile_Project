@@ -34,13 +34,6 @@ class HomeView extends GetView<HomeController> {
               const ProfileView(),
             ],
           ),
-          floatingActionButton: FloatingActionButton(
-            onPressed: () => controller.changeNav(2),
-            backgroundColor: AppColors.primary,
-            elevation: 4,
-            shape: const CircleBorder(),
-            child: const Icon(Icons.explore_rounded, color: AppColors.onPrimary, size: 28),
-          ),
           floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
           bottomNavigationBar: CustomBottomNavbar(
             selectedIndex: navIndex,

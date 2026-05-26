@@ -1,5 +1,5 @@
+import 'dart:async';
 import 'dart:ui' as ui;
-
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -7,13 +7,13 @@ import 'package:geolocator/geolocator.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:latlong2/latlong.dart';
-
 import '../../../../core/theme.dart';
 import '../../../../models/models.dart';
 import '../../../../widgets/common_widgets.dart';
 import '../bindings/explore_binding.dart';
 import '../controllers/explore_controller.dart';
 import 'billboard_detail_screen.dart';
+import 'package:flutter_compass/flutter_compass.dart';
 
 enum _MapStyle { osm, streets, satellite }
 
@@ -39,6 +39,15 @@ class ExploreView extends StatefulWidget {
 class _ExploreViewState extends State<ExploreView> {
   final MapController _mapController = MapController();
   final ExploreController _controller = Get.find<ExploreController>();
+
+  bool _isCompassMode = false;
+  StreamSubscription<CompassEvent>? _compassSubscription;
+
+  @override
+  void dispose() {
+    _compassSubscription?.cancel();
+    super.dispose();
+  }
 
   static const _mapStyles = <_MapStyle, _MapStyleConfig>{
     _MapStyle.osm: _MapStyleConfig(
@@ -102,6 +111,7 @@ class _ExploreViewState extends State<ExploreView> {
   }
 
   @override
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.surfaceContainerLow,
@@ -128,6 +138,13 @@ class _ExploreViewState extends State<ExploreView> {
                     _selectedBillboard = null;
                   });
                 },
+                onPositionChanged: (position, hasGesture) {
+                  if (hasGesture && _selectedBillboard != null) {
+                    setState(() {
+                      _selectedBillboard = null;
+                      });
+                  }
+                },
               ),
               children: [
                 _buildTileLayer(),
@@ -141,6 +158,8 @@ class _ExploreViewState extends State<ExploreView> {
               ],
             );
           }),
+          
+          // Search Bar & Filter
           SafeArea(
             bottom: false,
             child: Padding(
@@ -148,29 +167,129 @@ class _ExploreViewState extends State<ExploreView> {
               child: _SearchBar(),
             ),
           ),
+          
+          // Tombol My Location
+          // Kelompok Tombol Kontrol Peta (Vertikal)
           Positioned(
             bottom: 25,
             right: 16,
             child: SafeArea(
-              child: CircleIconButton(
-                icon: Icons.my_location,
-                onPressed: _goToCurrentLocation,
-                backgroundColor: Colors.white,
-                iconColor: AppColors.primary,
-                size: 48,
-              ),
-            ),
-          ),
-          Positioned(
-            bottom: 25,
-            right: 76,
-            child: SafeArea(
-              child: CircleIconButton(
-                icon: Icons.layers_outlined,
-                onPressed: _openMapStyleSheet,
-                backgroundColor: Colors.white,
-                iconColor: AppColors.primary,
-                size: 48,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // 1. Tombol Kompas (Otomatis muncul jika peta diputar)
+                 // 1. Tombol Kompas / Rotasi Dinamis
+                  StreamBuilder<MapEvent>(
+                    stream: _mapController.mapEventStream,
+                    builder: (context, snapshot) {
+                      // Matikan mode kompas otomatis jika peta diputar manual oleh user
+                      if (snapshot.hasData && snapshot.data!.source != MapEventSource.mapController) {
+                        WidgetsBinding.instance.addPostFrameCallback((_) {
+                          if (_isCompassMode && mounted) {
+                            setState(() => _isCompassMode = false);
+                            _compassSubscription?.cancel(); // Hentikan sensor kompas
+                          }
+                        });
+                      }
+
+                      final rotation = _mapController.camera.rotation;
+                      
+                      IconData iconData;
+                      Color iconColor;
+                      double iconAngle = 0.0;
+
+                      if (_isCompassMode) {
+                        iconData = Icons.explore;
+                        iconColor = AppColors.primary;
+                      } else if (rotation == 0.0) {
+                        iconData = Icons.navigation;
+                        iconColor = AppColors.primary;
+                      } else {
+                        iconData = Icons.navigation;
+                        iconColor = AppColors.outline;
+                        iconAngle = -rotation * (3.141592653589793 / 180);
+                      }
+
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: Container(
+                          width: 48,
+                          height: 48,
+                          decoration: const BoxDecoration(
+                            color: Colors.white,
+                            shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black12,
+                                blurRadius: 8,
+                                offset: Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: IconButton(
+                            padding: EdgeInsets.zero,
+                            icon: Transform.rotate(
+                              angle: iconAngle,
+                              child: Icon(
+                                iconData,
+                                color: iconColor,
+                                size: 26,
+                              ),
+                            ),
+                            onPressed: () async {
+                              if (_isCompassMode) {
+                                // Mematikan mode kompas
+                                setState(() => _isCompassMode = false);
+                                _compassSubscription?.cancel();
+                                _mapController.rotate(0.0);
+                              } else if (rotation == 0.0) {
+                                // Mengaktifkan mode kompas
+                                setState(() => _isCompassMode = true);
+                                
+                                // Mulai mendengarkan sensor kompas fisik
+                                _compassSubscription = FlutterCompass.events?.listen((event) {
+                                  if (_isCompassMode && event.heading != null) {
+                                    // Putar peta secara terbalik (360 - heading) agar posisi jarum kompas UI sinkron
+                                    _mapController.rotate(360 - event.heading!);
+                                  }
+                                });
+                                
+                                // Get.snackbar(
+                                //   'Mode Kompas', 
+                                //   'Peta sekarang mengikuti arah hadap HP Anda',
+                                //   snackPosition: SnackPosition.TOP,
+                                // );
+                              } else {
+                                // Reset ke arah Utara
+                                _mapController.rotate(0.0);
+                              }
+                            },
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                  
+                  // 2. Tombol Map Style (Layers)
+                  CircleIconButton(
+                    icon: Icons.layers_outlined,
+                    onPressed: _openMapStyleSheet,
+                    backgroundColor: Colors.white,
+                    iconColor: AppColors.primary,
+                    size: 48,
+                  ),
+                  
+                  const SizedBox(height: 12), // Jarak antara Layers dan Lokasi
+                  
+                  // 3. Tombol My Location
+                  CircleIconButton(
+                    icon: Icons.my_location,
+                    onPressed: _goToCurrentLocation,
+                    backgroundColor: Colors.white,
+                    iconColor: AppColors.primary,
+                    size: 48,
+                  ),
+                ],
               ),
             ),
           ),
@@ -288,7 +407,8 @@ class _ExploreViewState extends State<ExploreView> {
           setState(() {
             _selectedBillboard = billboard;
           });
-          _mapController.move(LatLng(billboard.lat - 0.002, billboard.lng), 15.0);
+          _mapController.move(LatLng(billboard.lat + 0.002, billboard.lng), 15.0);
+          _mapController.rotate(0.0);
         },
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -307,12 +427,12 @@ class _ExploreViewState extends State<ExploreView> {
                 boxShadow: [
                   if (isPremium)
                     BoxShadow(
-                      color: markerColor.withOpacity(0.6),
+                      color: markerColor.withValues(alpha: 0.6),
                       blurRadius: 16,
                     )
                   else
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.1),
+                      color: Colors.black.withValues(alpha: 0.1),
                       blurRadius: 4,
                       offset: const Offset(0, 2),
                     ),
@@ -355,89 +475,129 @@ class _ExploreViewState extends State<ExploreView> {
   }
 
   Marker _buildUserMarker() {
-    final pos = _userPosition!;
     return Marker(
-      point: LatLng(pos.latitude, pos.longitude),
-      width: 40,
-      height: 40,
+      point: LatLng(_userPosition!.latitude, _userPosition!.longitude),
+      // Lebar dibuat cukup besar (140) sebagai ruang batas panjang sinar radar
+      width: 140, 
+      height: 140,
       alignment: Alignment.center,
-      child: Container(
-        width: 40,
-        height: 40,
-        decoration: BoxDecoration(
-          color: AppColors.primary,
-          shape: BoxShape.circle,
-          boxShadow: [
-            BoxShadow(
-              color: AppColors.primary.withOpacity(0.28),
-              blurRadius: 12,
-            ),
-          ],
-        ),
-        child: const Icon(Icons.person_pin_circle, color: Colors.white, size: 22),
+      rotate: false, // Marker induk dikunci, hanya sinar di dalamnya yang berputar
+      child: StreamBuilder<CompassEvent>(
+        stream: FlutterCompass.events,
+        builder: (context, compassSnapshot) {
+          return StreamBuilder<MapEvent>(
+            stream: _mapController.mapEventStream,
+            builder: (context, mapSnapshot) {
+              // 1. Dapatkan arah fisik HP (heading), default 0 jika sensor belum siap
+              final heading = compassSnapshot.data?.heading ?? 0.0;
+              
+              // 2. Dapatkan rotasi peta saat ini
+              final mapRotation = _mapController.camera.rotation;
+              
+              // 3. Kalkulasi arah sinar: Arah HP dikurangi rotasi kamera peta
+              // (Agar sinar tidak melenceng kalau pengguna memutar peta pakai jari)
+              final finalRotation = heading - mapRotation;
+
+              return Stack(
+                alignment: Alignment.center,
+                children: [
+                  // Lapis Bawah: Sinar Radar yang berputar
+                  Transform.rotate(
+                    angle: finalRotation * (3.141592653589793 / 180),
+                    child: CustomPaint(
+                      size: const Size(140, 140),
+                      painter: _RadarBeamPainter(color: AppColors.primary),
+                    ),
+                  ),
+                  
+                  // Lapis Atas: Titik Biru Pusat (Ukurannya diperkecil)
+                  Container(
+                    width: 18, // Ukuran titik diperkecil dari sebelumnya
+                    height: 18,
+                    decoration: BoxDecoration(
+                      color: AppColors.primary,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white, width: 3),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.2),
+                          blurRadius: 6,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              );
+            },
+          );
+        },
       ),
     );
   }
 
- Marker _buildPopupMarker(BillboardModel billboard) {
+  Marker _buildPopupMarker(BillboardModel billboard) {
     return Marker(
       point: LatLng(billboard.lat, billboard.lng),
-      width: 360,
-      height: 240,
+      width: 400,
+      height: 300,
       alignment: Alignment.topCenter,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        mainAxisAlignment: MainAxisAlignment.end,
-        children: [
-          Stack(
-            alignment: Alignment.bottomCenter,
+      child: UnconstrainedBox(
+        alignment: Alignment.bottomCenter,
+        child: Padding(
+          padding: const EdgeInsets.only(bottom: 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.end,
             children: [
-              Container(
-                margin: const EdgeInsets.only(bottom: 10),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(24),
-                  border: Border.all(color: AppColors.primary.withOpacity(0.3), width: 1.5),
-                  boxShadow: [
-                    BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 10, offset: const Offset(0, 4)),
-                  ],
-                ),
-                child: _PropertyPreviewCard(
-                  billboard: billboard,
-                  onTap: () {
-                    Navigator.of(context).push(MaterialPageRoute(builder: (_) => BillboardDetailScreen(billboard: billboard)));
-                  },
-                ),
-              ),
-              // Segitiga dengan stroke yang menyambung
-              Positioned(
-                bottom: 0,
-                child: SizedBox(
-                  width: 24,
-                  height: 14,
-                  child: Stack(
-                    children: [
-                      // Segitiga Stroke (sedikit lebih besar)
-                      ClipPath(
-                        clipper: _TriangleClipper(),
-                        child: Container(color: AppColors.primary.withOpacity(0.3)),
-                      ),
-                      // Segitiga Isi (sedikit lebih kecil untuk menutupi bagian tengah)
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 1.5),
-                        child: ClipPath(
-                          clipper: _TriangleClipper(),
-                          child: Container(color: Colors.white),
-                        ),
-                      ),
-                    ],
+              Stack(
+                alignment: Alignment.bottomCenter,
+                clipBehavior: Clip.none,
+                children: [
+                  Container(
+                    margin: const EdgeInsets.only(bottom: 10),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(24),
+                      border: Border.all(color: AppColors.primary.withValues(alpha: 0.3), width: 1.5),
+                      boxShadow: [
+                        BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 10, offset: const Offset(0, 4)),
+                      ],
+                    ),
+                    child: _PropertyPreviewCard(
+                      billboard: billboard,
+                      onTap: () {
+                        Navigator.of(context).push(MaterialPageRoute(builder: (_) => BillboardDetailScreen(billboard: billboard)));
+                      },
+                    ),
                   ),
-                ),
+                  Positioned(
+                    bottom: 0,
+                    child: SizedBox(
+                      width: 24,
+                      height: 14,
+                      child: Stack(
+                        children: [
+                          ClipPath(
+                            clipper: _TriangleClipper(),
+                            child: Container(color: AppColors.primary.withValues(alpha: 0.3)),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 1.5),
+                            child: ClipPath(
+                              clipper: _TriangleClipper(),
+                              child: Container(color: Colors.white),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
-          const SizedBox(height: 32),
-        ],
+        ),
       ),
     );
   }
@@ -485,63 +645,74 @@ class _ExploreViewState extends State<ExploreView> {
 class _SearchBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return Container(
-      height: 48,
-      decoration: BoxDecoration(
-        color: AppColors.surfaceContainerLowest,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: AppColors.surfaceContainerHigh),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.08),
-            blurRadius: 24,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Row(
-        children: [
-          const Icon(Icons.search, color: AppColors.outline, size: 20),
-          const SizedBox(width: 12),
-          Expanded(
-            child: TextField(
-              decoration: InputDecoration(
-                hintText: 'Search locations, zones...',
-                hintStyle: GoogleFonts.inter(
-                  fontSize: 14,
-                  color: AppColors.outline,
-                ),
-                border: InputBorder.none,
-                contentPadding: EdgeInsets.zero,
-                isDense: true,
-              ),
-              style: GoogleFonts.inter(
-                fontSize: 14,
-                color: AppColors.onSurface,
-              ),
-            ),
-          ),
-          const SizedBox(width: 8),
-          Container(
-            width: 32,
-            height: 32,
+    return Row(
+      children: [
+        Expanded(
+          child: Container(
+            height: 48,
             decoration: BoxDecoration(
-              color: AppColors.surfaceContainerHigh,
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: AppColors.outlineVariant),
+              color: AppColors.surfaceContainerLowest,
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(color: AppColors.surfaceContainerHigh),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.08),
+                  blurRadius: 24,
+                  offset: const Offset(0, 4),
+                ),
+              ],
             ),
-            child: IconButton(
-              padding: EdgeInsets.zero,
-              icon: const Icon(Icons.tune, size: 18),
-              color: AppColors.onSurfaceVariant,
-              onPressed: () {
-                Get.snackbar('Filter', 'Filter belum tersedia.');
-              },
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Row(
+              children: [
+                const Icon(Icons.search, color: AppColors.outline, size: 20),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: TextField(
+                    decoration: InputDecoration(
+                      hintText: 'Search locations, zones...',
+                      hintStyle: GoogleFonts.inter(
+                        fontSize: 14,
+                        color: AppColors.outline,
+                      ),
+                      border: InputBorder.none,
+                      contentPadding: EdgeInsets.zero,
+                      isDense: true,
+                    ),
+                    style: GoogleFonts.inter(
+                      fontSize: 14,
+                      color: AppColors.onSurface,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
-        ],
-      ),
+        ),
+        const SizedBox(width: 8),
+        Container(
+          width: 48,
+          height: 48,
+          decoration: BoxDecoration(
+            color: AppColors.surfaceContainerLowest,
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: AppColors.surfaceContainerHigh),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.08),
+                blurRadius: 24,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: IconButton(
+            icon: const Icon(Icons.tune, color: AppColors.onSurfaceVariant, size: 20),
+            onPressed: () {
+              Get.snackbar('Filter', 'Filter belum tersedia.');
+            },
+          ),
+        ),
+      ],
     );
   }
 }
@@ -575,13 +746,13 @@ class _PropertyPreviewCard extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: 350,
         padding: const EdgeInsets.all(10),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(24),
         ),
         child: Row(
+          mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Container(
@@ -617,7 +788,7 @@ class _PropertyPreviewCard extends StatelessWidget {
                           vertical: 2,
                         ),
                         decoration: BoxDecoration(
-                          color: AppColors.secondaryContainer.withOpacity(0.9),
+                          color: AppColors.secondaryContainer.withValues(alpha: 0.9),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Row(
@@ -646,63 +817,66 @@ class _PropertyPreviewCard extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 12),
-            Expanded(
+            Flexible(
               child: Padding(
                 padding: const EdgeInsets.symmetric(vertical: 2),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.start,
-                  children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Expanded(
-                              child: Text(
-                                billboard.name,
-                                style: GoogleFonts.inter(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w700,
-                                  color: AppColors.onSurface,
-                                ),
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
+                child: IntrinsicWidth(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Flexible(
+                            child: Text(
+                              billboard.name,
+                              style: GoogleFonts.inter(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.onSurface,
                               ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
                             ),
-                            const Icon(
-                              Icons.bookmark_border,
-                              size: 18,
-                              color: AppColors.outline,
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 4),
-                        Row(
-                          children: [
-                            const Icon(
-                              Icons.location_on,
-                              size: 13,
-                              color: AppColors.onSurfaceVariant,
-                            ),
-                            const SizedBox(width: 4),
-                            Expanded(
-                              child: Text(
-                                billboard.location,
-                                style: GoogleFonts.inter(
-                                  fontSize: 11,
-                                  color: AppColors.onSurfaceVariant,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(width: 8),
+                          const Icon(
+                            Icons.bookmark_border,
+                            size: 18,
+                            color: AppColors.outline,
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            Icons.location_on,
+                            size: 13,
+                            color: AppColors.onSurfaceVariant,
+                          ),
+                          const SizedBox(width: 4),
+                          Flexible(
+                            child: Text(
+                              billboard.location,
+                              style: GoogleFonts.inter(
+                                fontSize: 11,
+                                color: AppColors.onSurfaceVariant,
                               ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
-                          ],
-                        ),
-                        const SizedBox(height: 6),
-                        Container(
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: Container(
                           padding: const EdgeInsets.symmetric(
                             horizontal: 8,
                             vertical: 4,
@@ -736,46 +910,39 @@ class _PropertyPreviewCard extends StatelessWidget {
                             ],
                           ),
                         ),
-                      ],
-                    ),
-                    const SizedBox(height: 10),
-                    const Divider(height: 1, color: AppColors.outlineVariant),
-                    const SizedBox(height: 8),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const SizedBox(height: 2),
-                            Text(
-                              '${_formatRupiah(billboard.pricePerWeek)} / month',
-                              style: GoogleFonts.inter(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w700,
-                                color: AppColors.primary,
-                              ),
-                            ),
-                          ],
-                        ),
-                        InkWell(
-                          onTap: onTap,
-                          borderRadius: BorderRadius.circular(14),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 10,
-                              vertical: 6,
-                            ),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFEFF4FF),
-                              borderRadius: BorderRadius.circular(14),
+                      ),
+                      const SizedBox(height: 10),
+                      Container(
+                        height: 1,
+                        color: AppColors.outlineVariant,
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.baseline,
+                        textBaseline: TextBaseline.alphabetic,
+                        children: [
+                          Text(
+                            _formatRupiah(billboard.pricePerWeek),
+                            style: GoogleFonts.inter(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.primary,
                             ),
                           ),
-                        ),
-                      ],
-                    ),
-                  ],
+                          const SizedBox(width: 4),
+                          Text(
+                            '/ month',
+                            style: GoogleFonts.inter(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.outline,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -787,6 +954,43 @@ class _PropertyPreviewCard extends StatelessWidget {
   }
 }
 
+class _RadarBeamPainter extends CustomPainter {
+  final Color color;
+
+  _RadarBeamPainter({required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    
+    // Membuat efek gradien dari warna terang di tengah ke transparan di luar
+    final paint = Paint()
+      ..shader = RadialGradient(
+        colors: [
+          color.withValues(alpha: 0.6),
+          color.withValues(alpha: 0.0), // Memudar di ujung
+        ],
+        stops: const [0.1, 1.0],
+      ).createShader(Rect.fromCircle(center: center, radius: size.width / 2))
+      ..style = PaintingStyle.fill;
+
+    // Arah "Utara/Atas" di Flutter Canvas adalah -90 derajat.
+    // Kita buat bukaan sinar sebesar 60 derajat (berpusat di arah atas).
+    const startAngle = -120 * (3.141592653589793 / 180); 
+    const sweepAngle = 60 * (3.141592653589793 / 180);
+
+    canvas.drawArc(
+      Rect.fromCircle(center: center, radius: size.width / 2),
+      startAngle,
+      sweepAngle,
+      true,
+      paint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
 class _TriangleClipper extends CustomClipper<ui.Path> {
   @override
   ui.Path getClip(ui.Size size) {
