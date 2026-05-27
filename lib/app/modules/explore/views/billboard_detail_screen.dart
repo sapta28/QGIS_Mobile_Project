@@ -581,6 +581,7 @@ class _BookingScreenState extends State<BookingScreen> {
           startDate: _displayDate(_startDate),
           endDate: _displayDate(_endDate),
           referenceId: refId,
+          checkoutUrl: checkoutUrl,
         ),
         transition: Transition.fade,
       );

@@ -153,6 +153,7 @@ class ActivityController extends GetxController {
 			weeklyImpressions: _toInt(item['impressions_per_day']) * 7,
 			totalPrice: _toDouble(item['total_price']),
 			rawStatus: rawStatus,
+			checkoutUrl: item['checkout_url'] != null ? _asString(item['checkout_url']) : null,
 		);
 	}
 

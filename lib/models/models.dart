@@ -44,6 +44,7 @@ class BookingModel {
   final int weeklyImpressions;
   final double totalPrice;
   final String? rawStatus;
+  final String? checkoutUrl;
 
   const BookingModel({
     required this.id,
@@ -55,6 +56,7 @@ class BookingModel {
     required this.weeklyImpressions,
     required this.totalPrice,
     this.rawStatus,
+    this.checkoutUrl,
   });
 }
 

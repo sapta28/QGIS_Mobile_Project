@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/theme.dart';
 import '../../home/controllers/home_controller.dart';
 import '../../activity/controllers/activity_controller.dart';
@@ -18,12 +19,16 @@ class BookingConfirmationScreen extends StatelessWidget {
   /// Backend reference ID, e.g. "BKG-7824-XV".
   final String referenceId;
 
+  /// Optional checkout URL for TriPay payment.
+  final String? checkoutUrl;
+
   const BookingConfirmationScreen({
     super.key,
     required this.billboardName,
     required this.startDate,
     required this.endDate,
     required this.referenceId,
+    this.checkoutUrl,
   });
 
   // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -236,7 +241,42 @@ class BookingConfirmationScreen extends StatelessWidget {
   Widget _buildButtons(BuildContext context) {
     return Column(
       children: [
-        // Primary: Go to My Bookings
+        // Pay Now (if checkoutUrl is provided)
+        if (checkoutUrl != null && checkoutUrl!.isNotEmpty) ...[
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: () async {
+                final url = Uri.parse(checkoutUrl!);
+                if (await canLaunchUrl(url)) {
+                  await launchUrl(url, mode: LaunchMode.externalApplication);
+                } else {
+                  Get.snackbar('Error', 'Could not launch payment URL');
+                }
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: AppColors.onPrimary,
+                padding: const EdgeInsets.symmetric(vertical: 18),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                elevation: 0,
+                shadowColor: AppColors.primary.withOpacity(0.25),
+              ),
+              child: Text(
+                'Pay Now / Bayar Sekarang',
+                style: GoogleFonts.inter(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: -0.01 * 16,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+        ],
+        // Primary/Secondary: Go to My Bookings
         SizedBox(
           width: double.infinity,
           child: ElevatedButton(
@@ -250,14 +290,17 @@ class BookingConfirmationScreen extends StatelessWidget {
               }
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              foregroundColor: AppColors.onPrimary,
+              backgroundColor: (checkoutUrl != null && checkoutUrl!.isNotEmpty)
+                  ? AppColors.surfaceContainer
+                  : AppColors.primary,
+              foregroundColor: (checkoutUrl != null && checkoutUrl!.isNotEmpty)
+                  ? AppColors.primary
+                  : AppColors.onPrimary,
               padding: const EdgeInsets.symmetric(vertical: 18),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(14),
               ),
               elevation: 0,
-              shadowColor: AppColors.primary.withOpacity(0.25),
             ),
             child: Text(
               'Go to My Bookings',

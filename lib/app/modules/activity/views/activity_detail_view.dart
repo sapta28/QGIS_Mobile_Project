@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../core/theme.dart';
 import '../../../../models/models.dart';
@@ -107,6 +108,28 @@ class _ActivityDetailViewState extends State<ActivityDetailView> {
             _InfoRow(label: 'Total Price', value: 'Rp ${booking.totalPrice.toStringAsFixed(0)}'),
             _InfoRow(label: 'Weekly Impressions', value: booking.weeklyImpressions.toString()),
             const SizedBox(height: 24),
+            if (booking.status == 'pending' && booking.checkoutUrl != null && booking.checkoutUrl!.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 24),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: FilledButton(
+                    onPressed: () async {
+                      final url = Uri.parse(booking.checkoutUrl!);
+                      if (await canLaunchUrl(url)) {
+                        await launchUrl(url, mode: LaunchMode.externalApplication);
+                      } else {
+                        Get.snackbar('Error', 'Could not launch payment URL');
+                      }
+                    },
+                    style: FilledButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                    ),
+                    child: const Text('Pay Now / Bayar Sekarang'),
+                  ),
+                ),
+              ),
             if (booking.status == 'pending' && booking.rawStatus != 'cancelled' && booking.rawStatus != 'pending_cancel')
               Form(
                 key: _formKey,
