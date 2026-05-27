@@ -7,13 +7,13 @@ import 'package:geolocator/geolocator.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:flutter_compass/flutter_compass.dart';
 import '../../../../core/theme.dart';
 import '../../../../models/models.dart';
 import '../../../../widgets/common_widgets.dart';
 import '../bindings/explore_binding.dart';
 import '../controllers/explore_controller.dart';
 import 'billboard_detail_screen.dart';
-import 'package:flutter_compass/flutter_compass.dart';
 
 enum _MapStyle { osm, streets, satellite }
 
@@ -39,6 +39,7 @@ class ExploreView extends StatefulWidget {
 class _ExploreViewState extends State<ExploreView> {
   final MapController _mapController = MapController();
   final ExploreController _controller = Get.find<ExploreController>();
+  final DraggableScrollableController _sheetController = DraggableScrollableController();
 
   bool _isCompassMode = false;
   StreamSubscription<CompassEvent>? _compassSubscription;
@@ -46,6 +47,7 @@ class _ExploreViewState extends State<ExploreView> {
   @override
   void dispose() {
     _compassSubscription?.cancel();
+    _sheetController.dispose();
     super.dispose();
   }
 
@@ -111,7 +113,6 @@ class _ExploreViewState extends State<ExploreView> {
   }
 
   @override
-  @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.surfaceContainerLow,
@@ -142,7 +143,7 @@ class _ExploreViewState extends State<ExploreView> {
                   if (hasGesture && _selectedBillboard != null) {
                     setState(() {
                       _selectedBillboard = null;
-                      });
+                    });
                   }
                 },
               ),
@@ -158,8 +159,6 @@ class _ExploreViewState extends State<ExploreView> {
               ],
             );
           }),
-          
-          // Search Bar & Filter
           SafeArea(
             bottom: false,
             child: Padding(
@@ -167,33 +166,27 @@ class _ExploreViewState extends State<ExploreView> {
               child: _SearchBar(),
             ),
           ),
-          
-          // Tombol My Location
-          // Kelompok Tombol Kontrol Peta (Vertikal)
           Positioned(
-            bottom: 25,
+            bottom: 100,
             right: 16,
             child: SafeArea(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // 1. Tombol Kompas (Otomatis muncul jika peta diputar)
-                 // 1. Tombol Kompas / Rotasi Dinamis
                   StreamBuilder<MapEvent>(
                     stream: _mapController.mapEventStream,
                     builder: (context, snapshot) {
-                      // Matikan mode kompas otomatis jika peta diputar manual oleh user
                       if (snapshot.hasData && snapshot.data!.source != MapEventSource.mapController) {
                         WidgetsBinding.instance.addPostFrameCallback((_) {
                           if (_isCompassMode && mounted) {
                             setState(() => _isCompassMode = false);
-                            _compassSubscription?.cancel(); // Hentikan sensor kompas
+                            _compassSubscription?.cancel();
                           }
                         });
                       }
 
                       final rotation = _mapController.camera.rotation;
-                      
+
                       IconData iconData;
                       Color iconColor;
                       double iconAngle = 0.0;
@@ -238,29 +231,17 @@ class _ExploreViewState extends State<ExploreView> {
                             ),
                             onPressed: () async {
                               if (_isCompassMode) {
-                                // Mematikan mode kompas
                                 setState(() => _isCompassMode = false);
                                 _compassSubscription?.cancel();
                                 _mapController.rotate(0.0);
                               } else if (rotation == 0.0) {
-                                // Mengaktifkan mode kompas
                                 setState(() => _isCompassMode = true);
-                                
-                                // Mulai mendengarkan sensor kompas fisik
                                 _compassSubscription = FlutterCompass.events?.listen((event) {
                                   if (_isCompassMode && event.heading != null) {
-                                    // Putar peta secara terbalik (360 - heading) agar posisi jarum kompas UI sinkron
                                     _mapController.rotate(360 - event.heading!);
                                   }
                                 });
-                                
-                                // Get.snackbar(
-                                //   'Mode Kompas', 
-                                //   'Peta sekarang mengikuti arah hadap HP Anda',
-                                //   snackPosition: SnackPosition.TOP,
-                                // );
                               } else {
-                                // Reset ke arah Utara
                                 _mapController.rotate(0.0);
                               }
                             },
@@ -269,8 +250,6 @@ class _ExploreViewState extends State<ExploreView> {
                       );
                     },
                   ),
-                  
-                  // 2. Tombol Map Style (Layers)
                   CircleIconButton(
                     icon: Icons.layers_outlined,
                     onPressed: _openMapStyleSheet,
@@ -278,10 +257,7 @@ class _ExploreViewState extends State<ExploreView> {
                     iconColor: AppColors.primary,
                     size: 48,
                   ),
-                  
-                  const SizedBox(height: 12), // Jarak antara Layers dan Lokasi
-                  
-                  // 3. Tombol My Location
+                  const SizedBox(height: 12),
                   CircleIconButton(
                     icon: Icons.my_location,
                     onPressed: _goToCurrentLocation,
@@ -292,6 +268,141 @@ class _ExploreViewState extends State<ExploreView> {
                 ],
               ),
             ),
+          ),
+          // --- SLIDE-UP PANEL: DAFTAR BILLBOARD SEKITAR ---
+          // Tidak ada lagi Padding pembungkus horizontal, sehingga full kiri-kanan
+          DraggableScrollableSheet(
+            controller: _sheetController,
+            initialChildSize: 0.20,
+            minChildSize: 0.20,
+            maxChildSize: 0.85,
+            snap: true,
+            builder: (BuildContext context, ScrollController scrollController) {
+              return Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.15),
+                      blurRadius: 16,
+                      offset: const Offset(0, -4),
+                    ),
+                  ],
+                ),
+                child: Obx(() {
+                  List<Map<String, dynamic>> sortedBillboards = [];
+
+                  if (_userPosition != null) {
+                    for (var b in _controller.billboards) {
+                      double dist = Geolocator.distanceBetween(
+                        _userPosition!.latitude, _userPosition!.longitude,
+                        b.lat, b.lng,
+                      );
+                      sortedBillboards.add({'billboard': b, 'distance': dist});
+                    }
+                    sortedBillboards.sort((a, b) =>
+                        (a['distance'] as double).compareTo(b['distance'] as double));
+                  } else {
+                    for (var b in _controller.billboards) {
+                      sortedBillboards.add({'billboard': b, 'distance': null});
+                    }
+                  }
+
+                  return ListView.builder(
+                    controller: scrollController,
+                    // Padding bottom dibuat 120 agar item paling bawah tidak tertutup Navbar
+                    padding: const EdgeInsets.only(top: 0, bottom: 120),
+                    itemCount: _controller.billboards.isEmpty ? 2 : sortedBillboards.length + 1,
+                    itemBuilder: (context, index) {
+                      
+                      // --- HEADER DRAG HANDLE ---
+                      if (index == 0) {
+                        return Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Center(
+                              child: Container(
+                                margin: const EdgeInsets.only(top: 12, bottom: 4),
+                                width: 40,
+                                height: 5,
+                                decoration: BoxDecoration(
+                                  color: AppColors.outlineVariant,
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                              ),
+                            ),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                              child: Row(
+                                children: [
+                                  const Icon(Icons.explore, color: Colors.black, size: 22),
+                                  const SizedBox(width: 10),
+                                  Text(
+                                    'Di Sekitar Anda',
+                                    style: GoogleFonts.inter(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.w800,
+                                      color: Colors.black,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const Divider(height: 1, color: Color(0xFFF1F5F9)),
+                            const SizedBox(height: 8),
+                          ],
+                        );
+                      }
+
+                      // --- STATE LOADING ---
+                      if (_controller.billboards.isEmpty) {
+                        return const Padding(
+                          padding: EdgeInsets.all(32.0),
+                          child: Center(child: CircularProgressIndicator()),
+                        );
+                      }
+
+                      // --- LIST ITEM ---
+                      final item = sortedBillboards[index - 1];
+                      final billboard = item['billboard'] as BillboardModel;
+                      final distance = item['distance'] as double?;
+
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        child: _PropertyPreviewCard(
+                            billboard: billboard,
+                            distance: distance,
+                            onTap: () {
+                              // 1. Fokuskan peta ke billboard
+                              setState(() => _selectedBillboard = billboard);
+                              _mapController.move(LatLng(billboard.lat + 0.001, billboard.lng), 15.0);
+                              
+                              // 2. TUTUP SLIDE-UP PANEL SECARA OTOMATIS
+                              if (_sheetController.isAttached) {
+                                _sheetController.animateTo(
+                                  0.18, // Kembali ke ukuran awal
+                                  duration: const Duration(milliseconds: 300),
+                                  curve: Curves.easeOutCubic,
+                                );
+                              }
+
+                              // 3. KEMBALIKAN ISI LIST KE PALING ATAS (TITIK 0)
+                              if (scrollController.hasClients) {
+                                scrollController.animateTo(
+                                  0.0, 
+                                  duration: const Duration(milliseconds: 300),
+                                  curve: Curves.easeOutCubic,
+                                );
+                              }
+                            },
+                          ),
+                      );
+                    },
+                  );
+                }),
+              );
+            },
           ),
         ],
       ),
@@ -427,12 +538,12 @@ class _ExploreViewState extends State<ExploreView> {
                 boxShadow: [
                   if (isPremium)
                     BoxShadow(
-                      color: markerColor.withValues(alpha: 0.6),
+                      color: markerColor.withOpacity(0.6),
                       blurRadius: 16,
                     )
                   else
                     BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.1),
+                      color: Colors.black.withOpacity(0.1),
                       blurRadius: 4,
                       offset: const Offset(0, 2),
                     ),
@@ -477,31 +588,23 @@ class _ExploreViewState extends State<ExploreView> {
   Marker _buildUserMarker() {
     return Marker(
       point: LatLng(_userPosition!.latitude, _userPosition!.longitude),
-      // Lebar dibuat cukup besar (140) sebagai ruang batas panjang sinar radar
-      width: 140, 
+      width: 140,
       height: 140,
       alignment: Alignment.center,
-      rotate: false, // Marker induk dikunci, hanya sinar di dalamnya yang berputar
+      rotate: false,
       child: StreamBuilder<CompassEvent>(
         stream: FlutterCompass.events,
         builder: (context, compassSnapshot) {
           return StreamBuilder<MapEvent>(
             stream: _mapController.mapEventStream,
             builder: (context, mapSnapshot) {
-              // 1. Dapatkan arah fisik HP (heading), default 0 jika sensor belum siap
               final heading = compassSnapshot.data?.heading ?? 0.0;
-              
-              // 2. Dapatkan rotasi peta saat ini
               final mapRotation = _mapController.camera.rotation;
-              
-              // 3. Kalkulasi arah sinar: Arah HP dikurangi rotasi kamera peta
-              // (Agar sinar tidak melenceng kalau pengguna memutar peta pakai jari)
               final finalRotation = heading - mapRotation;
 
               return Stack(
                 alignment: Alignment.center,
                 children: [
-                  // Lapis Bawah: Sinar Radar yang berputar
                   Transform.rotate(
                     angle: finalRotation * (3.141592653589793 / 180),
                     child: CustomPaint(
@@ -509,10 +612,8 @@ class _ExploreViewState extends State<ExploreView> {
                       painter: _RadarBeamPainter(color: AppColors.primary),
                     ),
                   ),
-                  
-                  // Lapis Atas: Titik Biru Pusat (Ukurannya diperkecil)
                   Container(
-                    width: 18, // Ukuran titik diperkecil dari sebelumnya
+                    width: 18,
                     height: 18,
                     decoration: BoxDecoration(
                       color: AppColors.primary,
@@ -520,7 +621,7 @@ class _ExploreViewState extends State<ExploreView> {
                       border: Border.all(color: Colors.white, width: 3),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.2),
+                          color: Colors.black.withOpacity(0.2),
                           blurRadius: 6,
                           offset: const Offset(0, 2),
                         ),
@@ -559,9 +660,9 @@ class _ExploreViewState extends State<ExploreView> {
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(24),
-                      border: Border.all(color: AppColors.primary.withValues(alpha: 0.3), width: 1.5),
+                      border: Border.all(color: AppColors.primary.withOpacity(0.3), width: 1.5),
                       boxShadow: [
-                        BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 10, offset: const Offset(0, 4)),
+                        BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 10, offset: const Offset(0, 4)),
                       ],
                     ),
                     child: _PropertyPreviewCard(
@@ -580,7 +681,7 @@ class _ExploreViewState extends State<ExploreView> {
                         children: [
                           ClipPath(
                             clipper: _TriangleClipper(),
-                            child: Container(color: AppColors.primary.withValues(alpha: 0.3)),
+                            child: Container(color: AppColors.primary.withOpacity(0.3)),
                           ),
                           Padding(
                             padding: const EdgeInsets.only(bottom: 1.5),
@@ -720,10 +821,12 @@ class _SearchBar extends StatelessWidget {
 class _PropertyPreviewCard extends StatelessWidget {
   final BillboardModel billboard;
   final VoidCallback onTap;
+  final double? distance;
 
   const _PropertyPreviewCard({
     required this.billboard,
     required this.onTap,
+    this.distance,
   });
 
   String _formatRupiah(double amount) {
@@ -731,6 +834,14 @@ class _PropertyPreviewCard extends StatelessWidget {
         .toStringAsFixed(0)
         .replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]}.');
     return 'Rp $formatted';
+  }
+
+  String _formatDistance(double meters) {
+    if (meters < 1000) {
+      return '${meters.toStringAsFixed(0)} m';
+    } else {
+      return '${(meters / 1000).toStringAsFixed(1)} km';
+    }
   }
 
   @override
@@ -750,6 +861,14 @@ class _PropertyPreviewCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: AppColors.outlineVariant.withOpacity(0.5)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.04),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -788,7 +907,7 @@ class _PropertyPreviewCard extends StatelessWidget {
                           vertical: 2,
                         ),
                         decoration: BoxDecoration(
-                          color: AppColors.secondaryContainer.withValues(alpha: 0.9),
+                          color: AppColors.secondaryContainer.withOpacity(0.9),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Row(
@@ -871,6 +990,16 @@ class _PropertyPreviewCard extends StatelessWidget {
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
+                          if (distance != null) ...[
+                            Text(
+                              ' • ${_formatDistance(distance!)}',
+                              style: GoogleFonts.inter(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.primary,
+                              ),
+                            ),
+                          ],
                         ],
                       ),
                       const SizedBox(height: 6),
@@ -963,19 +1092,16 @@ class _RadarBeamPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final center = Offset(size.width / 2, size.height / 2);
     
-    // Membuat efek gradien dari warna terang di tengah ke transparan di luar
     final paint = Paint()
       ..shader = RadialGradient(
         colors: [
-          color.withValues(alpha: 0.6),
-          color.withValues(alpha: 0.0), // Memudar di ujung
+          color.withOpacity(0.6),
+          color.withOpacity(0.0), 
         ],
         stops: const [0.1, 1.0],
       ).createShader(Rect.fromCircle(center: center, radius: size.width / 2))
       ..style = PaintingStyle.fill;
 
-    // Arah "Utara/Atas" di Flutter Canvas adalah -90 derajat.
-    // Kita buat bukaan sinar sebesar 60 derajat (berpusat di arah atas).
     const startAngle = -120 * (3.141592653589793 / 180); 
     const sweepAngle = 60 * (3.141592653589793 / 180);
 
@@ -991,6 +1117,7 @@ class _RadarBeamPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
+
 class _TriangleClipper extends CustomClipper<ui.Path> {
   @override
   ui.Path getClip(ui.Size size) {
