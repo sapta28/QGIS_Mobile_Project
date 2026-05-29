@@ -1,3 +1,4 @@
+import 'dart:math' as math; // Impor math untuk logika pembatasan item
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
@@ -168,6 +169,7 @@ class HomeView extends GetView<HomeController> {
                 ),
               ),
               const _BannerSlider(),
+
               Padding(
                 padding: const EdgeInsets.fromLTRB(20, 24, 20, 0),
                 child: Obx(
@@ -202,6 +204,63 @@ class HomeView extends GetView<HomeController> {
                   ),
                 ),
               ),
+              
+              // ---- BAGIAN CAMPAIGN BUNDLES (VERTIKAL) ----
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 24, 20, 16),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Campaign Bundles',
+                      style: GoogleFonts.inter(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                        color: const Color(0xFF0F172A),
+                        letterSpacing: -0.5,
+                      ),
+                    ),
+                    Obx(() {
+                      if (controller.campaignBundles.length > 2) {
+                        return TextButton(
+                          onPressed: () {
+                            // Get.toNamed('/all-campaigns');
+                          },
+                          style: TextButton.styleFrom(
+                            padding: EdgeInsets.zero,
+                            minimumSize: Size.zero,
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          ),
+                          child: Text(
+                            'See All',
+                            style: GoogleFonts.inter(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: const Color(0xFF059669),
+                            ),
+                          ),
+                        );
+                      }
+                      return const SizedBox.shrink();
+                    }),
+                  ],
+                ),
+              ),
+              Obx(() => ListView.builder(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: math.min(controller.campaignBundles.length, 2),
+                itemBuilder: (context, index) {
+                  final bundle = controller.campaignBundles[index];
+                  return _buildCampaignBundleCard(
+                    title: bundle.title,
+                    subtitle: bundle.subtitle,
+                    imageUrl: bundle.imageUrl,
+                  );
+                },
+              )),
+              // ---- AKHIR BAGIAN CAMPAIGN BUNDLES ----
               Padding(
                 padding: const EdgeInsets.fromLTRB(20, 32, 20, 16),
                 child: Text(
@@ -439,6 +498,80 @@ class HomeView extends GetView<HomeController> {
           ),
         ),
       ],
+    );
+  }
+
+  // ---- WIDGET CARD BARU UNTUK BUNDLE ----
+  Widget _buildCampaignBundleCard({
+    required String title,
+    required String subtitle,
+    required String imageUrl,
+  }) {
+    return Container(
+      width: double.infinity,
+      height: 160,
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(20),
+        image: DecorationImage(
+          image: NetworkImage(imageUrl),
+          fit: BoxFit.cover,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Stack(
+        children: [
+          Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(20),
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Colors.transparent,
+                  Colors.black.withOpacity(0.8),
+                ],
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.end,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: GoogleFonts.inter(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.white,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  subtitle,
+                  style: GoogleFonts.inter(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.white.withOpacity(0.8),
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 

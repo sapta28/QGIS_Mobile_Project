@@ -34,6 +34,18 @@ class BillboardModel {
   });
 }
 
+class CampaignBundleModel {
+  final String title;
+  final String subtitle;
+  final String imageUrl;
+
+  const CampaignBundleModel({
+    required this.title,
+    required this.subtitle,
+    required this.imageUrl,
+  });
+}
+
 class BookingModel {
   final String id;
   final String referenceId;
