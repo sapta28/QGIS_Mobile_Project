@@ -4,8 +4,9 @@ class BillboardModel {
   final String location;
   final String city;
   final String imageUrl;
-  final String type; // 'Digital' | 'Static'
+  final String type;
   final double pricePerWeek;
+  final bool isHeldByOthers;
   final String size;
   final String traffic;
   final int dailyImpressions;
@@ -14,6 +15,10 @@ class BillboardModel {
   final String direction;
   final double lat;
   final double lng;
+  final double? printFee;
+  final double? installFee;
+  final double? taxRate;
+  final double? downPaymentRate;
 
   const BillboardModel({
     required this.id,
@@ -23,6 +28,7 @@ class BillboardModel {
     required this.imageUrl,
     required this.type,
     required this.pricePerWeek,
+    required this.isHeldByOthers,
     required this.size,
     required this.traffic,
     required this.dailyImpressions,
@@ -31,7 +37,36 @@ class BillboardModel {
     required this.direction,
     required this.lat,
     required this.lng,
+    this.printFee,
+    this.installFee,
+    this.taxRate,
+    this.downPaymentRate,
   });
+
+  factory BillboardModel.fromJson(Map<String, dynamic> json) {
+    return BillboardModel(
+      id: json['id']?.toString() ?? '',
+      name: json['name'] ?? '',
+      location: json['address'] ?? json['location'] ?? '',
+      city: json['city'] ?? '',
+      imageUrl: json['thumbnail_url'] ?? json['image_url'] ?? '',
+      type: json['category']?['name'] ?? 'Billboard',
+      pricePerWeek: double.tryParse(json['active_pricing']?['price_per_month']?.toString() ?? '0') ?? 0,
+      isHeldByOthers: json['is_held_by_others'] ?? false,
+      size: json['size'] ?? '14\' × 48\'',
+      traffic: json['traffic_density'] ?? 'Medium',
+      dailyImpressions: json['impressions_per_day'] ?? 0,
+      isAvailable: json['is_active'] ?? false,
+      description: json['description'] ?? '',
+      direction: json['facing_direction'] ?? '',
+      lat: double.tryParse(json['lat']?.toString() ?? '0') ?? 0,
+      lng: double.tryParse(json['lng']?.toString() ?? '0') ?? 0,
+      printFee: double.tryParse(json['print_fee']?.toString() ?? '1500000'),
+      installFee: double.tryParse(json['install_fee']?.toString() ?? '500000'),
+      taxRate: 0.11,
+      downPaymentRate: 0.30,
+    );
+  }
 }
 
 class CampaignBundleModel {
@@ -52,10 +87,19 @@ class BookingModel {
   final BillboardModel billboard;
   final DateTime startDate;
   final DateTime endDate;
-  final String status; // 'active' | 'pending' | 'past'
+  final String status;
   final int weeklyImpressions;
   final double totalPrice;
   final String? rawStatus;
+  final String? paymentStatus;
+  final String? paymentTerm;
+  final String? paymentStage;
+  final String? checkoutUrl;
+  final String? finalCheckoutUrl;
+  final double? downPaymentAmount;
+  final double? remainingAmount;
+  final String? approvalStatus;
+  final List<dynamic>? paymentTracker;
 
   const BookingModel({
     required this.id,
@@ -67,6 +111,15 @@ class BookingModel {
     required this.weeklyImpressions,
     required this.totalPrice,
     this.rawStatus,
+    this.paymentStatus,
+    this.paymentTerm,
+    this.paymentStage,
+    this.checkoutUrl,
+    this.finalCheckoutUrl,
+    this.downPaymentAmount,
+    this.remainingAmount,
+    this.approvalStatus,
+    this.paymentTracker,
   });
 }
 
@@ -77,16 +130,15 @@ class DummyData {
       name: 'Times Square Spectacular',
       location: 'Broadway & 7th Ave',
       city: 'New York, NY',
-      imageUrl:
-          'https://images.unsplash.com/photo-1546484396-fb3fc6f95f98?w=800&q=80',
+      imageUrl: 'https://images.unsplash.com/photo-1546484396-fb3fc6f95f98?w=800&q=80',
       type: 'Digital',
       pricePerWeek: 8400,
+      isHeldByOthers: false,
       size: "14' × 48'",
       traffic: 'Very High',
       dailyImpressions: 1200000,
       isAvailable: true,
-      description:
-          'Premium digital placement in the heart of Times Square. This iconic LED display captures massive daily impressions from global tourist and commuter traffic. Ideal for brand launches and major campaigns with 8-second spot rotations.',
+      description: 'Premium digital placement in the heart of Times Square. This iconic LED display captures massive daily impressions from global tourist and commuter traffic. Ideal for brand launches and major campaigns with 8-second spot rotations.',
       direction: 'Facing South traffic',
       lat: 34.0520,
       lng: -118.2430,
@@ -96,16 +148,15 @@ class DummyData {
       name: 'Sunset Blvd Digital Hub',
       location: '8400 Sunset Blvd',
       city: 'West Hollywood, CA',
-      imageUrl:
-          'https://images.unsplash.com/photo-1533929736458-ca588d08c8be?w=800&q=80',
+      imageUrl: 'https://images.unsplash.com/photo-1533929736458-ca588d08c8be?w=800&q=80',
       type: 'Digital',
       pricePerWeek: 3200,
+      isHeldByOthers: true,
       size: "14' × 48'",
       traffic: 'High',
       dailyImpressions: 320000,
       isAvailable: true,
-      description:
-          'Premium digital placement on the iconic Sunset Strip. This high-definition display captures massive daily impressions from slow-moving entertainment and tourism traffic. Ideal for brand launches, entertainment releases, and luxury lifestyle campaigns.',
+      description: 'Premium digital placement on the iconic Sunset Strip. This high-definition display captures massive daily impressions from slow-moving entertainment and tourism traffic. Ideal for brand launches, entertainment releases, and luxury lifestyle campaigns.',
       direction: 'Facing East traffic',
       lat: 34.0530,
       lng: -118.2450,
@@ -115,16 +166,15 @@ class DummyData {
       name: 'Highway 101 Southbound',
       location: 'I-101 Mile Marker 42',
       city: 'Los Angeles, CA',
-      imageUrl:
-          'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=800&q=80',
+      imageUrl: 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=800&q=80',
       type: 'Static',
       pricePerWeek: 1800,
+      isHeldByOthers: false,
       size: "10.5' × 36'",
       traffic: 'High',
       dailyImpressions: 850000,
       isAvailable: true,
-      description:
-          'Strategic static billboard along the busiest highway in California. Perfect for sustained brand awareness campaigns targeting commuters and travelers heading into the Los Angeles metro area.',
+      description: 'Strategic static billboard along the busiest highway in California. Perfect for sustained brand awareness campaigns targeting commuters and travelers heading into the Los Angeles metro area.',
       direction: 'Facing North traffic',
       lat: 34.0510,
       lng: -118.2420,
@@ -134,16 +184,15 @@ class DummyData {
       name: 'Downtown Transit Network',
       location: 'Clark & Lake Station',
       city: 'Chicago, IL',
-      imageUrl:
-          'https://images.unsplash.com/photo-1449824913935-59a10b8d2000?w=800&q=80',
+      imageUrl: 'https://images.unsplash.com/photo-1449824913935-59a10b8d2000?w=800&q=80',
       type: 'Digital',
       pricePerWeek: 2400,
+      isHeldByOthers: false,
       size: "6' × 12'",
       traffic: 'Medium',
       dailyImpressions: 180000,
       isAvailable: false,
-      description:
-          'High-visibility transit shelter panels in downtown Chicago. Captures daily rush-hour commuters and weekend shoppers with prime visibility in the Loop district.',
+      description: 'High-visibility transit shelter panels in downtown Chicago. Captures daily rush-hour commuters and weekend shoppers with prime visibility in the Loop district.',
       direction: 'Multi-directional',
       lat: 34.0540,
       lng: -118.2410,
@@ -153,16 +202,15 @@ class DummyData {
       name: 'I-95 Northbound Digital',
       location: 'Downtown Sector A',
       city: 'Miami, FL',
-      imageUrl:
-          'https://images.unsplash.com/photo-1486325212027-8081e485255e?w=800&q=80',
+      imageUrl: 'https://images.unsplash.com/photo-1486325212027-8081e485255e?w=800&q=80',
       type: 'Digital',
       pricePerWeek: 2900,
+      isHeldByOthers: false,
       size: "14' × 48'",
       traffic: 'High',
       dailyImpressions: 124500,
       isAvailable: true,
-      description:
-          'Prime digital billboard on I-95 capturing northbound traffic into Miami. Exceptional visibility in all weather conditions with a 24/7 illuminated display reaching commuters, tourists, and business travelers.',
+      description: 'Prime digital billboard on I-95 capturing northbound traffic into Miami. Exceptional visibility in all weather conditions with a 24/7 illuminated display reaching commuters, tourists, and business travelers.',
       direction: 'Facing North traffic',
       lat: 34.0500,
       lng: -118.2460,
@@ -177,8 +225,13 @@ class DummyData {
       startDate: DateTime(2023, 10, 15),
       endDate: DateTime(2023, 11, 14),
       status: 'active',
+      rawStatus: 'active',
       weeklyImpressions: 1200000,
       totalPrice: 33600,
+      paymentTracker: [
+        {'type': 'dp', 'status': 'paid', 'amount': 16800},
+        {'type': 'pelunasan', 'status': 'paid', 'amount': 16800},
+      ],
     ),
     BookingModel(
       id: 'b2',
@@ -187,8 +240,13 @@ class DummyData {
       startDate: DateTime(2023, 11, 1),
       endDate: DateTime(2023, 12, 31),
       status: 'active',
+      rawStatus: 'active',
       weeklyImpressions: 850000,
       totalPrice: 14400,
+      paymentTracker: [
+        {'type': 'dp', 'status': 'paid', 'amount': 7200},
+        {'type': 'pelunasan', 'status': 'paid', 'amount': 7200},
+      ],
     ),
   ];
 
@@ -200,8 +258,13 @@ class DummyData {
       startDate: DateTime(2024, 1, 1),
       endDate: DateTime(2024, 1, 31),
       status: 'pending',
+      rawStatus: 'pending_payment',
       weeklyImpressions: 180000,
       totalPrice: 9600,
+      paymentTracker: [
+        {'type': 'dp', 'status': 'unpaid', 'amount': 4800, 'checkout_url': 'https://tripay.co.id/checkout/'},
+        {'type': 'pelunasan', 'status': 'unpaid', 'amount': 4800},
+      ],
     ),
   ];
 
@@ -213,8 +276,13 @@ class DummyData {
       startDate: DateTime(2023, 7, 1),
       endDate: DateTime(2023, 8, 31),
       status: 'past',
+      rawStatus: 'completed',
       weeklyImpressions: 320000,
       totalPrice: 25600,
+      paymentTracker: [
+        {'type': 'dp', 'status': 'paid', 'amount': 12800},
+        {'type': 'pelunasan', 'status': 'paid', 'amount': 12800},
+      ],
     ),
   ];
 }
