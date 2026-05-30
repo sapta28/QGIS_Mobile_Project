@@ -38,12 +38,12 @@ class ProfileController extends GetxController {
 			final response = await _authApiService.me();
 			final data = response['data'] is Map ? response['data'] : response;
 			if (data is Map) {
-				userId.value = data['id']?.toString() ?? '';
+				// userId.value = data['id']?.toString() ?? '';
 				name.value = data['name']?.toString() ?? '';
 				email.value = data['email']?.toString() ?? '';
-				role.value = data['role']?.toString() ?? '';
-				avatarUrl.value = data['avatar_url']?.toString() ?? '';
-				companyId.value = data['company_id']?.toString() ?? '';
+				// role.value = data['role']?.toString() ?? '';
+				// avatarUrl.value = data['avatar_url']?.toString() ?? '';
+				// companyId.value = data['company_id']?.toString() ?? '';
 			}
 		} catch (error) {
 			errorMessage.value =
