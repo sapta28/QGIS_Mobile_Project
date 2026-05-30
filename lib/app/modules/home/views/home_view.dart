@@ -1,4 +1,4 @@
-import 'dart:math' as math; // Impor math untuk logika pembatasan item
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
@@ -169,7 +169,6 @@ class HomeView extends GetView<HomeController> {
                 ),
               ),
               const _BannerSlider(),
-
               Padding(
                 padding: const EdgeInsets.fromLTRB(20, 24, 20, 0),
                 child: Obx(
@@ -204,15 +203,13 @@ class HomeView extends GetView<HomeController> {
                   ),
                 ),
               ),
-              
-              // ---- BAGIAN CAMPAIGN BUNDLES (VERTIKAL) ----
               Padding(
                 padding: const EdgeInsets.fromLTRB(20, 24, 20, 16),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      'Campaign Bundles',
+                      'Limited Promos',
                       style: GoogleFonts.inter(
                         fontSize: 18,
                         fontWeight: FontWeight.w800,
@@ -220,47 +217,46 @@ class HomeView extends GetView<HomeController> {
                         letterSpacing: -0.5,
                       ),
                     ),
-                    Obx(() {
-                      if (controller.campaignBundles.length > 2) {
-                        return TextButton(
-                          onPressed: () {
-                            // Get.toNamed('/all-campaigns');
-                          },
-                          style: TextButton.styleFrom(
-                            padding: EdgeInsets.zero,
-                            minimumSize: Size.zero,
-                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                          ),
-                          child: Text(
-                            'See All',
-                            style: GoogleFonts.inter(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                              color: const Color(0xFF059669),
-                            ),
-                          ),
-                        );
-                      }
-                      return const SizedBox.shrink();
-                    }),
+                    TextButton(
+                      onPressed: () {},
+                      style: TextButton.styleFrom(
+                        padding: EdgeInsets.zero,
+                        minimumSize: Size.zero,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                      child: Text(
+                        'See All',
+                        style: GoogleFonts.inter(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: const Color(0xFF059669),
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ),
-              Obx(() => ListView.builder(
+              ListView(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
-                itemCount: math.min(controller.campaignBundles.length, 2),
-                itemBuilder: (context, index) {
-                  final bundle = controller.campaignBundles[index];
-                  return _buildCampaignBundleCard(
-                    title: bundle.title,
-                    subtitle: bundle.subtitle,
-                    imageUrl: bundle.imageUrl,
-                  );
-                },
-              )),
-              // ---- AKHIR BAGIAN CAMPAIGN BUNDLES ----
+                children: [
+                  _buildPromoCard(
+                    'Jl. Ahmad Yani',
+                    'Rp 12 M / month',
+                    'https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?auto=format&fit=crop&w=600&q=80',
+                    '20% OFF',
+                    const Color(0xFFEF4444),
+                  ),
+                  _buildPromoCard(
+                    'Kawasan Industri',
+                    'Rp 8 M / month',
+                    'https://images.unsplash.com/photo-1504307651254-35680f356f12?auto=format&fit=crop&w=600&q=80',
+                    'Available Now',
+                    const Color(0xFFF59E0B),
+                  ),
+                ],
+              ),
               Padding(
                 padding: const EdgeInsets.fromLTRB(20, 32, 20, 16),
                 child: Text(
@@ -347,6 +343,58 @@ class HomeView extends GetView<HomeController> {
                   ],
                 ),
               ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 32, 20, 16),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Campaign Bundles',
+                      style: GoogleFonts.inter(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                        color: const Color(0xFF0F172A),
+                        letterSpacing: -0.5,
+                      ),
+                    ),
+                    Obx(() {
+                      if (controller.campaignBundles.length > 2) {
+                        return TextButton(
+                          onPressed: () {},
+                          style: TextButton.styleFrom(
+                            padding: EdgeInsets.zero,
+                            minimumSize: Size.zero,
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          ),
+                          child: Text(
+                            'See All',
+                            style: GoogleFonts.inter(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: const Color(0xFF059669),
+                            ),
+                          ),
+                        );
+                      }
+                      return const SizedBox.shrink();
+                    }),
+                  ],
+                ),
+              ),
+              Obx(() => ListView.builder(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: math.min(controller.campaignBundles.length, 2),
+                itemBuilder: (context, index) {
+                  final bundle = controller.campaignBundles[index];
+                  return _buildCampaignBundleCard(
+                    title: bundle.title,
+                    subtitle: bundle.subtitle,
+                    imageUrl: bundle.imageUrl,
+                  );
+                },
+              )),
             ],
           ),
         ),
@@ -501,7 +549,6 @@ class HomeView extends GetView<HomeController> {
     );
   }
 
-  // ---- WIDGET CARD BARU UNTUK BUNDLE ----
   Widget _buildCampaignBundleCard({
     required String title,
     required String subtitle,
@@ -566,6 +613,87 @@ class HomeView extends GetView<HomeController> {
                   ),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPromoCard(String title, String price, String imageUrl, String discount, Color badgeColor) {
+    return Container(
+      width: double.infinity,
+      height: 160,
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(24),
+        image: DecorationImage(
+          image: NetworkImage(imageUrl),
+          fit: BoxFit.cover,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.08),
+            blurRadius: 12,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Stack(
+        children: [
+          Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(24),
+              gradient: LinearGradient(
+                begin: Alignment.bottomCenter,
+                end: Alignment.topCenter,
+                colors: [Colors.black.withOpacity(0.9), Colors.transparent],
+              ),
+            ),
+          ),
+          Positioned(
+            top: 16,
+            left: 16,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: badgeColor,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                discount,
+                style: GoogleFonts.inter(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700),
+              ),
+            ),
+          ),
+          Positioned(
+            bottom: 16,
+            left: 16,
+            right: 16,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 18),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 6),
+                Row(
+                  children: [
+                    const Icon(Icons.local_offer_rounded, color: Colors.white70, size: 14),
+                    const SizedBox(width: 6),
+                    Flexible(
+                      child: Text(
+                        price,
+                        style: GoogleFonts.inter(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w500),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -772,10 +900,10 @@ class _PageBackground extends StatelessWidget {
         fit: StackFit.expand,
         children: [
           Opacity(
-            opacity: 0.5,
-            child: Image.network(
-              'https://images.unsplash.com/photo-1514565131-fce0801e5785?auto=format&fit=crop&w=800&q=80',
-              fit: BoxFit.cover,
+            opacity: 0.6,
+            child: Image.asset(
+              'assets/images/gd1.jpg',
+              fit: BoxFit.fill,
               alignment: Alignment.center,
             ),
           ),
