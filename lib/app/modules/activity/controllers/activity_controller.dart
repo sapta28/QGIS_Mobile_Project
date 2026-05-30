@@ -126,6 +126,7 @@ class ActivityController extends GetxController {
 		final spotMap = spot is Map ? spot : <String, dynamic>{};
 		final rawStatus = _asString(item['status']);
 		final status = _mapStatus(rawStatus);
+		final paymentInfo = _extractPaymentInfo(item);
 
 		return BookingModel(
 			id: _asString(item['id']),
@@ -146,6 +147,11 @@ class ActivityController extends GetxController {
 				direction: _asString(item['facing_direction'], fallback: '-'),
 				lat: _toDouble(item['latitude']),
 				lng: _toDouble(item['longitude']),
+        isHeldByOthers: false,
+				printFee: _toNullableDouble(item['print_fee'] ?? item['mmt_fee'] ?? item['production_fee']),
+				installFee: _toNullableDouble(item['install_fee'] ?? item['installation_fee']),
+				taxRate: _toNullableDouble(item['tax_rate'] ?? item['vat_rate']),
+				downPaymentRate: _toNullableDouble(item['down_payment_rate'] ?? item['dp_rate']),
 			),
 			startDate: _parseDate(item['start_date']),
 			endDate: _parseDate(item['end_date']),
@@ -153,7 +159,93 @@ class ActivityController extends GetxController {
 			weeklyImpressions: _toInt(item['impressions_per_day']) * 7,
 			totalPrice: _toDouble(item['total_price']),
 			rawStatus: rawStatus,
+			paymentStatus: paymentInfo['paymentStatus'],
+			paymentTerm: paymentInfo['paymentTerm'],
+			paymentStage: paymentInfo['paymentStage'],
+			checkoutUrl: paymentInfo['checkoutUrl'],
+			finalCheckoutUrl: paymentInfo['finalCheckoutUrl'],
+			downPaymentAmount: paymentInfo['downPaymentAmount'],
+			remainingAmount: paymentInfo['remainingAmount'],
+			approvalStatus: paymentInfo['approvalStatus'],
 		);
+	}
+
+	Map<String, dynamic> _extractPaymentInfo(Map<String, dynamic> item) {
+		final payment = _normalizeMap(item['payment']);
+		final payments = item['payments'] is List
+			? (item['payments'] as List)
+					.whereType<Map>()
+					.map((value) => value.map((key, value) => MapEntry(key.toString(), value)))
+					.toList()
+			: <Map<String, dynamic>>[];
+
+		Map<String, dynamic>? dpPayment;
+		Map<String, dynamic>? finalPayment;
+		Map<String, dynamic>? pendingPayment;
+
+		for (final paymentItem in payments) {
+			final term = _asString(paymentItem['type'], fallback: _asString(paymentItem['term']));
+			final status = _asString(paymentItem['status']).toLowerCase();
+			final isDp = term == 'dp' || term == 'down_payment' || term == 'termin_1';
+			final isFinal = term == 'final' || term == 'pelunasan' || term == 'termin_2' || term == 'remaining';
+			if (isDp && dpPayment == null) {
+				dpPayment = paymentItem;
+			}
+			if (isFinal && finalPayment == null) {
+				finalPayment = paymentItem;
+			}
+			if (status == 'pending' && pendingPayment == null) {
+				pendingPayment = paymentItem;
+			}
+		}
+
+		final selectedPayment = pendingPayment ?? payment;
+		final dpSelected = dpPayment ?? selectedPayment;
+		final finalSelected = finalPayment;
+
+		return {
+			'paymentStatus': _asString(item['payment_status'], fallback: _asString(selectedPayment['status'])),
+			'paymentTerm': _asString(selectedPayment['type'], fallback: _asString(selectedPayment['term'])),
+			'paymentStage': _asString(item['payment_stage'], fallback: _asString(selectedPayment['stage'])),
+			'checkoutUrl': _extractUrl(selectedPayment),
+			'finalCheckoutUrl': _extractUrl(finalSelected),
+			'downPaymentAmount': _toNullableDouble(dpSelected['amount'] ?? dpSelected['price']),
+			'remainingAmount': _toNullableDouble(finalSelected?['amount'] ?? finalSelected?['price']),
+			'approvalStatus': _asString(item['approval_status']),
+		};
+	}
+
+	Map<String, dynamic> _normalizeMap(Object? value) {
+		if (value is Map<String, dynamic>) {
+			return value;
+		}
+		if (value is Map) {
+			return value.map((key, value) => MapEntry(key.toString(), value));
+		}
+		return <String, dynamic>{};
+	}
+
+	String? _extractUrl(Map<String, dynamic>? payment) {
+		if (payment == null) {
+			return null;
+		}
+		for (final key in const ['checkout_url', 'checkoutUrl', 'payment_url', 'paymentUrl', 'redirect_url']) {
+			final value = payment[key];
+			if (value is String && value.isNotEmpty) {
+				return value;
+			}
+		}
+		return null;
+	}
+
+	double? _toNullableDouble(Object? value) {
+		if (value == null) {
+			return null;
+		}
+		if (value is num) {
+			return value.toDouble();
+		}
+		return double.tryParse(value.toString());
 	}
 
 	DateTime _parseDate(Object? value) {
