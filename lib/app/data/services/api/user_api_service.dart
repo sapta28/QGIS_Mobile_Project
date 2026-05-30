@@ -1,3 +1,5 @@
+import 'package:dio/dio.dart';
+
 import 'api.dart';
 import 'api_client.dart';
 
@@ -5,6 +7,8 @@ class UserApiService {
   UserApiService(this._client);
 
   final ApiClient _client;
+  
+  get _dio => null;
 
   Future<Map<String, dynamic>> getDashboardSummary() async {
     final response = await _client.get(ApiEndpoints.userDashboardSummary);
@@ -46,6 +50,8 @@ class UserApiService {
     required String endDate,
     required String durationType,
     required int durationValue,
+    String? paymentMethod,
+    bool? uploadDesignLater,
     String? notes,
   }) async {
     final response = await _client.post(
@@ -55,6 +61,8 @@ class UserApiService {
         'end_date': endDate,
         'duration_type': durationType,
         'duration_value': durationValue,
+        if (paymentMethod != null && paymentMethod.isNotEmpty) 'payment_method': paymentMethod,
+        if (uploadDesignLater != null) 'upload_design_later': uploadDesignLater,
         if (notes != null && notes.isNotEmpty) 'notes': notes,
       },
     );
@@ -129,5 +137,34 @@ class UserApiService {
       return data.map((key, value) => MapEntry(key.toString(), value));
     }
     return <String, dynamic>{'data': data};
+  }
+
+  /// Set reminder ketika billboard sedang di-hold oleh orang lain
+  Future<Map<String, dynamic>> setBillboardReminder({
+    required String billboardId,
+    required String startDate,
+    required String endDate,
+  }) async {
+    try {
+      // Pastikan endpoint ini sesuai dengan yang kita buat di routes/api.php Laravel (Route::post('/reminders', ...))
+      final response = await _dio.post(
+        '/reminders', 
+        data: {
+          'billboard_id': billboardId,
+          'start_date': startDate,
+          'end_date': endDate,
+        },
+      );
+      
+      return response.data;
+    } on DioException catch (e) {
+      // Tangkap pesan error dari backend jika ada (misal: "Anda sudah terdaftar...")
+      if (e.response?.data != null && e.response?.data is Map<String, dynamic>) {
+        throw Exception(e.response!.data['message'] ?? 'Gagal menyetel pengingat');
+      }
+      throw Exception('Terjadi kesalahan jaringan');
+    } catch (e) {
+      throw Exception('Gagal menyetel pengingat: $e');
+    }
   }
 }
