@@ -7,7 +7,7 @@ class ApiEndpoints {
     // use your Mac's LAN IP or a public tunnel URL.
     static const String baseUrl = String.fromEnvironment(
         'API_BASE_URL',
-        defaultValue: 'http://localhost:8000/api',
+        defaultValue: 'http://178.128.104.13/api',
     );
 
   // General

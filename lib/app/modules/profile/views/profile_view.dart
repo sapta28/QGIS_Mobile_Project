@@ -1,11 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../core/theme.dart';
 import '../controllers/profile_controller.dart';
 import 'personal_information_view.dart';
 import 'payment_methods_view.dart';
+import 'notifications_view.dart';
+import 'saved_billboards_view.dart';
+import 'campaign_history_view.dart';
+import 'help_center_view.dart';
 
 class ProfileView extends GetView<ProfileController> {
   const ProfileView({super.key});
@@ -24,6 +29,20 @@ class ProfileView extends GetView<ProfileController> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
     );
+  }
+
+  static Future<void> launchWhatsApp() async {
+    const phone = '6282143323186'; // Ganti dengan nomor admin
+    const message =
+        'Halo admin, saya ingin bertanya mengenai aplikasi billboard.';
+    final encoded = Uri.encodeComponent(message);
+    final url = Uri.parse('https://wa.me/$phone?text=$encoded');
+    if (await canLaunchUrl(url)) {
+      await launchUrl(url, mode: LaunchMode.externalApplication);
+    } else {
+      Get.snackbar('Error', 'WhatsApp tidak dapat dibuka.',
+          snackPosition: SnackPosition.BOTTOM);
+    }
   }
 
   @override
@@ -67,10 +86,11 @@ class ProfileView extends GetView<ProfileController> {
                     subtitle: 'Manage cards and billing details',
                     onTap: () => Get.to(() => const PaymentMethodsView()),
                   ),
-                  const ProfileMenuItem(
+                  ProfileMenuItem(
                     icon: Icons.notifications_outlined,
                     label: 'Notifications',
                     subtitle: 'Manage alerts for bookings and deals',
+                    onTap: () => Get.to(() => const NotificationsView()),
                   ),
                 ],
               ),
@@ -82,16 +102,18 @@ class ProfileView extends GetView<ProfileController> {
               ),
               const SizedBox(height: 8),
               _MenuGroup(
-                items: const [
+                items: [
                   ProfileMenuItem(
                     icon: Icons.favorite_outline,
                     label: 'Saved Billboards',
                     subtitle: 'View your shortlisted inventory',
+                    onTap: () => Get.to(() => const SavedBillboardsView()),
                   ),
                   ProfileMenuItem(
                     icon: Icons.history,
                     label: 'Campaign History',
                     subtitle: 'Review past and active rentals',
+                    onTap: () => Get.to(() => const CampaignHistoryView()),
                   ),
                 ],
               ),
@@ -103,14 +125,18 @@ class ProfileView extends GetView<ProfileController> {
               ),
               const SizedBox(height: 8),
               _MenuGroup(
-                items: const [
+                items: [
                   ProfileMenuItem(
                     icon: Icons.help_outline,
                     label: 'Help Center',
+                    subtitle: 'FAQ dan panduan penggunaan',
+                    onTap: () => Get.to(() => const HelpCenterView()),
                   ),
                   ProfileMenuItem(
                     icon: Icons.chat_bubble_outline,
                     label: 'Contact Support',
+                    subtitle: 'Chat langsung via WhatsApp',
+                    onTap: launchWhatsApp,
                   ),
                 ],
               ),
