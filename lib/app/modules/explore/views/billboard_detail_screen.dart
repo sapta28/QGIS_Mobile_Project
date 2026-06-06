@@ -174,7 +174,7 @@ class _DetailSheet extends StatelessWidget {
                   text: TextSpan(
                     children: [
                       TextSpan(
-                        text: '\$${(billboard.pricePerWeek).toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]},')}',
+                        text: 'Rp ${(billboard.pricePerWeek).toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]}.')}',
                         style: GoogleFonts.inter(
                           fontSize: 18,
                           fontWeight: FontWeight.w700,
@@ -183,7 +183,7 @@ class _DetailSheet extends StatelessWidget {
                         ),
                       ),
                       TextSpan(
-                        text: ' / wk',
+                        text: ' / minggu',
                         style: GoogleFonts.inter(
                           fontSize: 13,
                           color: AppColors.onSurfaceVariant,
@@ -465,7 +465,7 @@ class _BookingScreenState extends State<BookingScreen> {
   double get _totalPrice => _monthlyRate * _months;
 
   String _formatMoney(double amount) =>
-      '\$${amount.toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]},')}';
+      'Rp ${amount.toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]}.')}';
 
   String _getErrorMessage(Object error, String fallback) {
     if (error is DioException) {
