@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_application_1/app/modules/explore/views/tripay_checkout_webview.dart';
 import 'package:get/get.dart';
+import '../../profile/controllers/profile_controller.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:file_picker/file_picker.dart';
@@ -103,9 +104,15 @@ class _HeroImageSection extends StatelessWidget {
                   icon: Icons.arrow_back,
                   onPressed: () => Navigator.of(context).pop(),
                 ),
-                CircleIconButton(
-                  icon: Icons.share_outlined,
-                  onPressed: () {},
+                Row(
+                  children: [
+                    CircleIconButton(
+                      icon: Icons.share_outlined,
+                      onPressed: () {},
+                    ),
+                    const SizedBox(width: 8),
+                    _SaveBillboardButton(billboard: billboard),
+                  ],
                 ),
               ],
             ),
@@ -512,6 +519,7 @@ class _BookingScreenState extends State<BookingScreen> {
   DateTime? _startDate;
   int _months = 1;
   bool _isSubmitting = false;
+  bool _isPicking = false;
   String? _uploadedFileName;
   List<dynamic> _paymentChannels = [];
   String? _selectedPaymentMethod;
@@ -762,22 +770,36 @@ class _BookingScreenState extends State<BookingScreen> {
   }
 
   Future<void> _pickDesignFile() async {
-    final result = await FilePicker.platform.pickFiles(
-      type: FileType.custom,
-      allowedExtensions: ['png', 'jpg', 'jpeg', 'pdf'],
-      allowMultiple: false,
-      withData: false,
-    );
-
-    if (result == null || result.files.isEmpty) {
-      return;
-    }
-
-    final selected = result.files.first;
+    if (_isPicking) return;
     setState(() {
-      _uploadedFileName = selected.name;
-      _uploadedFilePath = selected.path;
+      _isPicking = true;
     });
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['png', 'jpg', 'jpeg', 'pdf'],
+        allowMultiple: false,
+        withData: false,
+      );
+
+      if (result == null || result.files.isEmpty) {
+        return;
+      }
+
+      final selected = result.files.first;
+      setState(() {
+        _uploadedFileName = selected.name;
+        _uploadedFilePath = selected.path;
+      });
+    } catch (e) {
+      Get.snackbar('Error', 'Gagal memilih file: $e');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isPicking = false;
+        });
+      }
+    }
   }
 
   @override
@@ -2057,5 +2079,38 @@ class _BookingConfirmationScreenState extends State<BookingConfirmationScreen> {
       actCtrl.selectedTab.value = 2;
       actCtrl.fetchActivities(status: 'pending');
     }
+  }
+}
+
+class _SaveBillboardButton extends StatelessWidget {
+  final BillboardModel billboard;
+
+  const _SaveBillboardButton({required this.billboard});
+
+  @override
+  Widget build(BuildContext context) {
+    final profileController = Get.find<ProfileController>();
+    return Obx(() {
+      final isSaved = profileController.isBillboardSaved(billboard.id);
+      return CircleIconButton(
+        icon: isSaved ? Icons.favorite : Icons.favorite_border_rounded,
+        iconColor: isSaved ? const Color(0xFFEF4444) : const Color(0xFF64748B),
+        onPressed: () {
+          profileController.toggleSaveBillboard(billboard);
+          Get.snackbar(
+            isSaved ? 'Dihapus' : 'Disimpan',
+            isSaved 
+                ? 'Billboard dihapus dari daftar simpan.' 
+                : 'Billboard berhasil disimpan ke daftar simpan.',
+            snackPosition: SnackPosition.BOTTOM,
+            backgroundColor: const Color(0xFF0F172A),
+            colorText: Colors.white,
+            margin: const EdgeInsets.all(16),
+            borderRadius: 12,
+            duration: const Duration(seconds: 2),
+          );
+        },
+      );
+    });
   }
 }
