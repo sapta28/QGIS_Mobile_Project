@@ -7,6 +7,7 @@ import '../../../data/services/api/user_api_service.dart';
 import '../../explore/controllers/explore_controller.dart';
 import '../controllers/home_controller.dart';
 import '../../profile/controllers/profile_controller.dart';
+import '../../inbox/controllers/inbox_controller.dart';
 
 class HomeBinding extends Bindings {
   @override
@@ -34,6 +35,7 @@ class HomeBinding extends Bindings {
     Get.lazyPut<ExploreController>(
       () => ExploreController(Get.find<UserApiService>()),
     );
+    Get.lazyPut<InboxController>(InboxController.new);
     if (!Get.isRegistered<ProfileController>()) {
       Get.lazyPut<ProfileController>(
         () => ProfileController(
