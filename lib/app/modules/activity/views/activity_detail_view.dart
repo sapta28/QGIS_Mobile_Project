@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_application_1/app/modules/home/controllers/home_controller.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -517,13 +518,51 @@ class _PaymentActionsCard extends StatelessWidget {
       return;
     }
 
-    await Get.to(
+    final paid = await Get.to<bool>(
       () => TriPayCheckoutWebView(
         checkoutUrl: uri.toString(),
         title: 'TriPay Payment',
       ),
       fullscreenDialog: true,
     );
+    
+    if (paid != true) {
+      Get.until((route) => route.isFirst);
+      if (Get.isRegistered<HomeController>()) {
+        Get.find<HomeController>().changeNav(1);
+      }
+      if (Get.isRegistered<ActivityController>()) {
+        final actCtrl = Get.find<ActivityController>();
+        actCtrl.selectedTab.value = 2;
+        actCtrl.fetchActivities(status: 'pending');
+      }
+      Get.snackbar(
+        'Menunggu Pembayaran',
+        'Silakan lunasi pembayaran sebelum waktu habis.',
+        snackPosition: SnackPosition.TOP,
+        backgroundColor: const Color(0xFFF59E0B),
+        colorText: Colors.white,
+        duration: const Duration(seconds: 5),
+        icon: const Icon(Icons.access_time_rounded, color: Colors.white),
+      );
+    } else {
+      Get.until((route) => route.isFirst);
+      if (Get.isRegistered<HomeController>()) {
+        Get.find<HomeController>().changeNav(1);
+      }
+      if (Get.isRegistered<ActivityController>()) {
+        final actCtrl = Get.find<ActivityController>();
+        actCtrl.selectedTab.value = 2;
+        actCtrl.fetchActivities(status: 'pending');
+      }
+      Get.snackbar(
+        'Pembayaran Berhasil',
+        'Pembayaran telah dilunasi.',
+        snackPosition: SnackPosition.TOP,
+        backgroundColor: const Color(0xFF059669),
+        colorText: Colors.white,
+      );
+    }
   }
 }
 
@@ -689,6 +728,30 @@ class _ActivityDetailStateScope extends InheritedWidget {
   });
 
   final _ActivityDetailViewState state;
+
+  String _getDisplayStatus(String rawStatus) {
+    switch (rawStatus) {
+      case 'pending_payment':
+      case 'pending':
+        return 'Pending (Belum melunasi DP)';
+      case 'waiting_confirmation':
+        return 'Pending (Menunggu Validasi Desain)';
+      case 'waiting_pelunasan':
+        return 'Pending (Menunggu Pelunasan)';
+      case 'approved':
+        return 'Siap Dipasang';
+      case 'active':
+        return 'Sedang Tayang';
+      case 'completed':
+        return 'Selesai';
+      case 'cancelled':
+        return 'Dibatalkan';
+      case 'rejected':
+        return 'Ditolak';
+      default:
+        return rawStatus.toUpperCase().replaceAll('_', ' ');
+    }
+  }
 
   static _ActivityDetailViewState of(BuildContext context) {
     final scope = context.dependOnInheritedWidgetOfExactType<_ActivityDetailStateScope>();

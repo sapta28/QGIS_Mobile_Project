@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
+import 'package:flutter_application_1/app/modules/explore/views/tripay_checkout_webview.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -12,8 +13,6 @@ import '../../../../widgets/common_widgets.dart';
 import '../../../data/services/api/user_api_service.dart';
 import '../../home/controllers/home_controller.dart';
 import '../../activity/controllers/activity_controller.dart';
-import 'booking_confirmation_screen.dart';
-import 'tripay_checkout_webview.dart';
 
 class BillboardDetailScreen extends StatelessWidget {
   final BillboardModel billboard;
@@ -148,14 +147,12 @@ class _DetailSheet extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
-              // ...
               children: [
-                // UPDATE BADGE STATUS
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
                     color: isHeldByOthers 
-                        ? const Color(0xFFFEF3C7) // Kuning lembut
+                        ? const Color(0xFFFEF3C7) 
                         : actuallyAvailable
                             ? AppColors.surfaceContainerHigh
                             : AppColors.surfaceContainerHigh,
@@ -172,7 +169,7 @@ class _DetailSheet extends StatelessWidget {
                       fontWeight: FontWeight.w600,
                       letterSpacing: 0.05 * 12,
                       color: isHeldByOthers
-                          ? const Color(0xFFB45309) // Coklat tua
+                          ? const Color(0xFFB45309) 
                           : actuallyAvailable
                               ? AppColors.primary
                               : AppColors.outline,
@@ -365,7 +362,6 @@ class BillboardSpecCard extends StatelessWidget {
 
 class _StickyBookButton extends StatefulWidget {
   final BillboardModel billboard;
-  // Tangkap tanggal yang dipilih dari Peta/Controller
   final DateTime? startDate;
   final DateTime? endDate;
 
@@ -386,11 +382,9 @@ class _StickyBookButtonState extends State<_StickyBookButton> {
 
   UserApiService get _userApiService => Get.find<UserApiService>();
 
-  // Fungsi untuk memanggil API Reminder
   Future<void> _handleRemindMe() async {
     if (_reminderSet || _isRequestingReminder) return;
     
-    // Validasi tanggal wajib ada
     if (widget.startDate == null || widget.endDate == null) {
       Get.snackbar('Ketersediaan', 'Pilih tanggal sewa di peta terlebih dahulu untuk menyetel pengingat.',
           snackPosition: SnackPosition.BOTTOM,
@@ -429,10 +423,6 @@ class _StickyBookButtonState extends State<_StickyBookButton> {
   @override
   Widget build(BuildContext context) {
     final b = widget.billboard;
-    // Status logika tombol:
-    // 1. Fully Available -> Book Now
-    // 2. Held by Others (DP Pending/Waiting Admin) -> Remind Me
-    // 3. Not Available (Active/Lunas) -> Not Available (Disabled)
     final bool isHeldByOthers = b.isHeldByOthers;
     final bool actuallyAvailable = b.isAvailable && !isHeldByOthers;
 
@@ -453,8 +443,7 @@ class _StickyBookButtonState extends State<_StickyBookButton> {
         ],
       ),
       child: isHeldByOthers
-          ? // SKU 2: Tombol Ingatkan Saya (Kuning)
-          ElevatedButton.icon(
+          ? ElevatedButton.icon(
               onPressed: (_isRequestingReminder || _reminderSet) ? null : _handleRemindMe,
               icon: _isRequestingReminder
                   ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFFB45309)))
@@ -468,8 +457,8 @@ class _StickyBookButtonState extends State<_StickyBookButton> {
                 style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w600, letterSpacing: -0.01 * 16),
               ),
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFFBBF24), // Kuning Amber
-                foregroundColor: const Color(0xFF78350F), // Coklat tua
+                backgroundColor: const Color(0xFFFBBF24), 
+                foregroundColor: const Color(0xFF78350F), 
                 disabledBackgroundColor: const Color(0xFFFBBF24).withOpacity(0.5),
                 disabledForegroundColor: const Color(0xFF78350F).withOpacity(0.5),
                 padding: const EdgeInsets.symmetric(vertical: 18),
@@ -478,16 +467,14 @@ class _StickyBookButtonState extends State<_StickyBookButton> {
               ),
             )
           : actuallyAvailable
-              ? // SKU 1: Tombol Book Now (Biru/Primary)
-              PrimaryButton(
+              ? PrimaryButton(
                   label: 'Book Now',
                   trailingIcon: Icons.arrow_forward,
                   onPressed: () {
                     Get.to(() => BookingScreen(billboard: b), transition: Transition.rightToLeft);
                   },
                 )
-              : // SKU 3: Tombol Not Available (Abu-abu/Disabled)
-              SizedBox(
+              : SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
                     onPressed: null,
@@ -649,13 +636,37 @@ class _BookingScreenState extends State<BookingScreen> {
           fullscreenDialog: true,
         );
 
-        if (paid == true && mounted) {
+        if (mounted) {
           Get.until((route) => route.isFirst);
+          
           if (Get.isRegistered<HomeController>()) {
             Get.find<HomeController>().changeNav(1);
           }
+
           if (Get.isRegistered<ActivityController>()) {
-            Get.find<ActivityController>().fetchActivities(status: null);
+            final actCtrl = Get.find<ActivityController>();
+            actCtrl.selectedTab.value = 2;
+            actCtrl.fetchActivities(status: 'pending');
+          }
+
+          if (paid != true) {
+            Get.snackbar(
+              'Menunggu Pembayaran',
+              'Booking berhasil disimpan. Silakan lunasi DP pada menu Activity sebelum waktu habis.',
+              snackPosition: SnackPosition.TOP,
+              backgroundColor: const Color(0xFFF59E0B),
+              colorText: Colors.white,
+              duration: const Duration(seconds: 5),
+              icon: const Icon(Icons.access_time_rounded, color: Colors.white),
+            );
+          } else {
+             Get.snackbar(
+              'Pembayaran Berhasil',
+              'DP telah dilunasi. Menunggu validasi admin.',
+              snackPosition: SnackPosition.TOP,
+              backgroundColor: const Color(0xFF059669),
+              colorText: Colors.white,
+            );
           }
         }
       } else {
@@ -1898,8 +1909,36 @@ class _BookingConfirmationScreenState extends State<BookingConfirmationScreen> {
       fullscreenDialog: true,
     );
 
-    if (paid == true && mounted) {
-      _goToBookingsTab();
+    if (mounted) {
+      Get.until((route) => route.isFirst);
+      if (Get.isRegistered<HomeController>()) {
+        Get.find<HomeController>().changeNav(1);
+      }
+      if (Get.isRegistered<ActivityController>()) {
+        final actCtrl = Get.find<ActivityController>();
+        actCtrl.selectedTab.value = 2;
+        actCtrl.fetchActivities(status: 'pending');
+      }
+
+      if (paid != true) {
+        Get.snackbar(
+          'Menunggu Pembayaran',
+          'Silakan lunasi DP pada menu Activity sebelum waktu habis.',
+          snackPosition: SnackPosition.TOP,
+          backgroundColor: const Color(0xFFF59E0B),
+          colorText: Colors.white,
+          duration: const Duration(seconds: 5),
+          icon: const Icon(Icons.access_time_rounded, color: Colors.white),
+        );
+      } else {
+        Get.snackbar(
+          'Pembayaran Berhasil',
+          'DP telah dilunasi. Menunggu validasi admin.',
+          snackPosition: SnackPosition.TOP,
+          backgroundColor: const Color(0xFF059669),
+          colorText: Colors.white,
+        );
+      }
     }
   }
 
@@ -1914,9 +1953,13 @@ class _BookingConfirmationScreenState extends State<BookingConfirmationScreen> {
 
   void _goToBookingsTab() {
     Get.until((route) => route.isFirst);
-    Get.find<HomeController>().changeNav(1);
+    if (Get.isRegistered<HomeController>()) {
+      Get.find<HomeController>().changeNav(1);
+    }
     if (Get.isRegistered<ActivityController>()) {
-      Get.find<ActivityController>().fetchActivities(status: null);
+      final actCtrl = Get.find<ActivityController>();
+      actCtrl.selectedTab.value = 2;
+      actCtrl.fetchActivities(status: 'pending');
     }
   }
 }

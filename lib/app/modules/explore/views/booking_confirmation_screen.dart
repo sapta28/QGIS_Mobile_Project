@@ -508,9 +508,18 @@ class _BookingConfirmationScreenState extends State<BookingConfirmationScreen> {
       fullscreenDialog: true,
     );
 
-    if (paid == true && mounted) {
+    // Jika user menutup webview sebelum payment success,
+    // tetap pindahkan ke My Bookings agar booking masuk sebagai pending (DP belum bayar).
+    if (mounted) {
       _goToBookingsTab();
+
+      if (Get.isRegistered<ActivityController>()) {
+        // Refresh semua booking agar tab Pending bisa memfilter berdasarkan mapping rawStatus.
+        Get.find<ActivityController>().fetchActivities(status: null);
+      }
     }
+
+    // paid==true tetap sama-sama diarahkan (perilaku utama sudah ada di atas).
   }
 
   Future<void> _openCheckoutIfAvailable() async {
@@ -526,7 +535,7 @@ class _BookingConfirmationScreenState extends State<BookingConfirmationScreen> {
     Get.until((route) => route.isFirst);
     Get.find<HomeController>().changeNav(1);
     if (Get.isRegistered<ActivityController>()) {
-      Get.find<ActivityController>().fetchActivities(status: null);
+      Get.find<ActivityController>().fetchActivities(status: 'pending');
     }
   }
 }
