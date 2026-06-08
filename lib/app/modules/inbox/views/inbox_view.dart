@@ -11,6 +11,9 @@ class InboxView extends GetView<InboxController> {
 
   @override
   Widget build(BuildContext context) {
+    if (!Get.isRegistered<InboxController>()) {
+      Get.put(InboxController());
+    }
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.dark.copyWith(statusBarColor: Colors.transparent),
       child: Scaffold(
@@ -55,24 +58,27 @@ class InboxView extends GetView<InboxController> {
                           ),
                         ),
                         const SizedBox(width: 16),
-                        Container(
-                          width: 44,
-                          height: 44,
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            shape: BoxShape.circle,
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.04),
-                                blurRadius: 8,
-                                offset: const Offset(0, 4),
-                              ),
-                            ],
-                          ),
-                          child: const Icon(
-                            Icons.support_agent_rounded,
-                            color: Color(0xFF0F172A),
-                            size: 22,
+                        GestureDetector(
+                          onTap: () => controller.showHelpDialog(),
+                          child: Container(
+                            width: 44,
+                            height: 44,
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              shape: BoxShape.circle,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.04),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            child: const Icon(
+                              Icons.support_agent_rounded,
+                              color: Color(0xFF0F172A),
+                              size: 22,
+                            ),
                           ),
                         ),
                       ],
@@ -134,7 +140,7 @@ class InboxView extends GetView<InboxController> {
                             SizedBox(
                               width: double.infinity,
                               child: ElevatedButton(
-                                onPressed: () {},
+                                onPressed: () => controller.contactSupport(),
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: const Color(0xFF25D366),
                                   foregroundColor: Colors.white,
