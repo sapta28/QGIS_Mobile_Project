@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:get/get.dart';
 
@@ -10,13 +11,66 @@ class ExploreController extends GetxController {
 	final UserApiService _userApiService;
 
 	final billboards = <BillboardModel>[].obs;
+	final filteredBillboards = <BillboardModel>[].obs;  // Reactive list yang digunakan UI
 	final isLoading = false.obs;
 	final errorMessage = ''.obs;
+
+	final selectedCategory = RxnString();
+	final searchQuery = ''.obs;
+	Timer? _pollingTimer;
+
+	/// Terapkan filter + search ke filteredBillboards
+	void _applyFilter() {
+		final query = searchQuery.value.toLowerCase().trim();
+		final category = selectedCategory.value;
+
+		filteredBillboards.value = billboards.where((b) {
+			final matchesCategory = category == null ||
+					b.type.toLowerCase().contains(category.toLowerCase());
+			final matchesSearch = query.isEmpty ||
+					b.name.toLowerCase().contains(query) ||
+					b.location.toLowerCase().contains(query) ||
+					b.city.toLowerCase().contains(query) ||
+					b.type.toLowerCase().contains(query);
+			return matchesCategory && matchesSearch;
+		}).toList();
+	}
+
+	void setCategoryFilter(String category) {
+		selectedCategory.value = category;
+	}
+
+	void clearCategoryFilter() {
+		selectedCategory.value = null;
+	}
+
+	void setSearchQuery(String query) {
+		searchQuery.value = query;
+	}
+
+	void clearSearch() {
+		searchQuery.value = '';
+	}
 
 	@override
 	void onInit() {
 		super.onInit();
 		fetchSpots();
+		// Saat source data berubah → terapkan filter ulang
+		ever(billboards, (_) => _applyFilter());
+		// Saat kriteria filter berubah → terapkan filter ulang
+		ever(searchQuery, (_) => _applyFilter());
+		ever(selectedCategory, (_) => _applyFilter());
+		// Auto-polling setiap 30 detik (background, tidak tampilkan loading indicator)
+		_pollingTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+			fetchSpots(silent: true);
+		});
+	}
+
+	@override
+	void onClose() {
+		_pollingTimer?.cancel();
+		super.onClose();
 	}
 
 	Future<void> fetchSpots({
@@ -24,12 +78,14 @@ class ExploreController extends GetxController {
 		double? lng,
 		int? radius,
 		String? query,
+		bool silent = false,
 	}) async {
-		if (isLoading.value) {
-			return;
+		// Jika silent mode (polling background), jangan tampilkan loading spinner
+		if (!silent) {
+			if (isLoading.value) return;
+			isLoading.value = true;
 		}
 
-		isLoading.value = true;
 		errorMessage.value = '';
 		try {
 			final response = await _userApiService.getSpots(
@@ -43,10 +99,12 @@ class ExploreController extends GetxController {
 			final list = _extractList(data);
 			billboards.value = list.map(_mapSpot).toList();
 		} catch (error) {
-			errorMessage.value = _getErrorMessage(error, 'Gagal memuat data spot.');
-			Get.snackbar('Explore', errorMessage.value);
+			if (!silent) {
+				errorMessage.value = _getErrorMessage(error, 'Gagal memuat data spot.');
+				Get.snackbar('Explore', errorMessage.value);
+			}
 		} finally {
-			isLoading.value = false;
+			if (!silent) isLoading.value = false;
 		}
 	}
 
