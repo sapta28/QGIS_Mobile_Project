@@ -56,7 +56,51 @@ class ActivityController extends GetxController {
 			final response = await _userApiService.getActivities(status: status);
 			final data = response['data'];
 			final list = _extractList(data);
-			bookings.value = list.map(_mapBooking).toList();
+
+			// Map bookings first (may have placeholder images)
+			final mapped = list.map(_mapBooking).toList();
+
+			// Collect unique spot IDs that have no real image yet
+			final spotIds = mapped
+					.where((b) => b.billboard.imageUrl == _fallbackImageUrl || b.billboard.imageUrl.isEmpty)
+					.map((b) => b.billboard.id)
+					.where((id) => id.isNotEmpty)
+					.toSet()
+					.toList();
+
+			// Fetch spot details in parallel to get real thumbnail_url
+			Map<String, String> spotImageMap = {};
+			if (spotIds.isNotEmpty) {
+				final futures = spotIds.map((id) async {
+					try {
+						final detail = await _userApiService.getSpotDetail(id);
+						final spotData = detail['data'] ?? detail;
+						final imageUrl = _asString(
+							spotData['thumbnail_url'],
+							fallback: _asString(spotData['image_url']),
+						);
+						if (imageUrl.isNotEmpty) {
+							spotImageMap[id] = imageUrl;
+						}
+					} catch (_) {
+						// ignore individual failures
+					}
+				});
+				await Future.wait(futures);
+			}
+
+			// Patch bookings that need an image update
+			if (spotImageMap.isNotEmpty) {
+				bookings.value = mapped.map((booking) {
+					final realImage = spotImageMap[booking.billboard.id];
+					if (realImage != null && realImage.isNotEmpty) {
+						return _patchBillboardImage(booking, realImage);
+					}
+					return booking;
+				}).toList();
+			} else {
+				bookings.value = mapped;
+			}
 		} catch (error) {
 			errorMessage.value =
 					_getErrorMessage(error, 'Gagal memuat data aktivitas.');
@@ -64,6 +108,56 @@ class ActivityController extends GetxController {
 		} finally {
 			isLoading.value = false;
 		}
+	}
+
+	/// Creates a copy of [booking] with an updated billboard imageUrl.
+	BookingModel _patchBillboardImage(BookingModel booking, String imageUrl) {
+		final b = booking.billboard;
+		return BookingModel(
+			id: booking.id,
+			referenceId: booking.referenceId,
+			billboard: BillboardModel(
+				id: b.id,
+				name: b.name,
+				location: b.location,
+				city: b.city,
+				imageUrl: imageUrl,
+				type: b.type,
+				pricePerWeek: b.pricePerWeek,
+				isHeldByOthers: b.isHeldByOthers,
+				size: b.size,
+				traffic: b.traffic,
+				dailyImpressions: b.dailyImpressions,
+				isAvailable: b.isAvailable,
+				description: b.description,
+				direction: b.direction,
+				lat: b.lat,
+				lng: b.lng,
+				printFee: b.printFee,
+				installFee: b.installFee,
+				taxRate: b.taxRate,
+				downPaymentRate: b.downPaymentRate,
+			),
+			startDate: booking.startDate,
+			endDate: booking.endDate,
+			status: booking.status,
+			weeklyImpressions: booking.weeklyImpressions,
+			totalPrice: booking.totalPrice,
+			rawStatus: booking.rawStatus,
+			paymentStatus: booking.paymentStatus,
+			paymentTerm: booking.paymentTerm,
+			paymentStage: booking.paymentStage,
+			checkoutUrl: booking.checkoutUrl,
+			finalCheckoutUrl: booking.finalCheckoutUrl,
+			downPaymentAmount: booking.downPaymentAmount,
+			remainingAmount: booking.remainingAmount,
+			approvalStatus: booking.approvalStatus,
+			paymentTracker: booking.paymentTracker,
+			creativeUrl: booking.creativeUrl,
+			creativeStatus: booking.creativeStatus,
+			creativeName: booking.creativeName,
+			creativeAdminNote: booking.creativeAdminNote,
+		);
 	}
 
 	Future<bool> cancelActivity({
@@ -124,6 +218,25 @@ class ActivityController extends GetxController {
 		}
 	}
 
+	Future<String?> payFinalActivity(String activityId) async {
+		if (isSubmitting.value) {
+			return null;
+		}
+
+		isSubmitting.value = true;
+		errorMessage.value = '';
+		try {
+			final checkoutUrl = await _userApiService.payFinalActivity(activityId);
+			return checkoutUrl;
+		} catch (error) {
+			errorMessage.value = _getErrorMessage(error, 'Gagal membuat URL pembayaran.');
+			Get.snackbar('Pelunasan', errorMessage.value);
+			return null;
+		} finally {
+			isSubmitting.value = false;
+		}
+	}
+
 	List<BookingModel> bookingsForTab(int tabIndex) {
 		switch (tabIndex) {
 			case 0:
@@ -166,7 +279,16 @@ class ActivityController extends GetxController {
 				name: _asString(spotMap['title'], fallback: 'Billboard'),
 				location: _asString(item['address'], fallback: '-'),
 				city: _asString(item['city'], fallback: '-'),
-				imageUrl: _asString(item['thumbnail_url'], fallback: _fallbackImageUrl),
+				imageUrl: _asString(
+					spotMap['thumbnail_url'],
+					fallback: _asString(
+						_firstImageUrl(spotMap['images']),
+						fallback: _asString(
+							spotMap['image_url'],
+							fallback: _asString(item['thumbnail_url'], fallback: _fallbackImageUrl),
+						),
+					),
+				),
 				type: _asString(spotMap['type'], fallback: 'Billboard'),
 				pricePerWeek: _toDouble(item['total_price']) / 4.0,
 				size: _asString(item['size'], fallback: '-'),
@@ -248,6 +370,18 @@ class ActivityController extends GetxController {
 			'remainingAmount': _toNullableDouble(finalSelected?['amount'] ?? finalSelected?['price']),
 			'approvalStatus': _asString(item['approval_status']),
 		};
+	}
+
+	String? _firstImageUrl(Object? images) {
+		if (images is! List || images.isEmpty) return null;
+		final first = images.first;
+		if (first is Map) {
+			for (final key in const ['url', 'image_url', 'thumbnail_url', 'path']) {
+				final val = first[key];
+				if (val is String && val.isNotEmpty) return val;
+			}
+		}
+		return null;
 	}
 
 	Map<String, dynamic> _normalizeMap(Object? value) {
