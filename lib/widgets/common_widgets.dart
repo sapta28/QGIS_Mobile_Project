@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../core/theme.dart';
@@ -305,4 +306,14 @@ class AppCard extends StatelessWidget {
       ),
     );
   }
+}
+
+ImageProvider getAvatarProvider(String url, String fallback) {
+  if (url.isEmpty) {
+    return NetworkImage(fallback);
+  }
+  if (url.startsWith('http://') || url.startsWith('https://')) {
+    return NetworkImage(url);
+  }
+  return FileImage(File(url));
 }
