@@ -422,19 +422,25 @@ class _PaymentActionsCard extends StatelessWidget {
       );
     }
     if (isFinalPaymentPending) {
-      final url = (booking.finalCheckoutUrl ?? '').isNotEmpty
-          ? booking.finalCheckoutUrl
-          : booking.checkoutUrl;
-      if ((url ?? '').isNotEmpty) {
-        buttons.add(
-          _PaymentButton(
-            label: 'Bayar Pelunasan',
-            subtitle: 'Lunasi sisa pembayaran sebelum eksekusi.',
-            color: const Color(0xFF2563EB),
-            onTap: () => _openCheckout(context, url!),
-          ),
-        );
-      }
+      buttons.add(
+        _PaymentButton(
+          label: 'Bayar Pelunasan',
+          subtitle: 'Lunasi sisa pembayaran sebelum eksekusi.',
+          color: const Color(0xFF2563EB),
+          onTap: () async {
+            var url = booking.finalCheckoutUrl;
+            if (url == null || url.isEmpty) {
+              final actCtrl = Get.find<ActivityController>();
+              url = await actCtrl.payFinalActivity(booking.id);
+            }
+            if (url != null && url.isNotEmpty) {
+              _openCheckout(context, url);
+            } else {
+              Get.snackbar('Pelunasan', 'Gagal mendapatkan link pembayaran.');
+            }
+          },
+        ),
+      );
     }
 
     if (buttons.isEmpty) {
@@ -733,12 +739,14 @@ class _BookingTrackerCard extends StatelessWidget {
             children: [
               const Icon(Icons.stacked_line_chart_rounded, color: Color(0xFF059669), size: 20),
               const SizedBox(width: 8),
-              Text(
-                'Tracker Pembayaran DP & Pelunasan',
-                style: GoogleFonts.inter(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                  color: const Color(0xFF0F172A),
+              Expanded(
+                child: Text(
+                  'Tracker Pembayaran DP & Pelunasan',
+                  style: GoogleFonts.inter(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: const Color(0xFF0F172A),
+                  ),
                 ),
               ),
             ],
@@ -890,8 +898,13 @@ class _DesignUploadCard extends StatefulWidget {
 
 class _DesignUploadCardState extends State<_DesignUploadCard> {
   bool _isUploading = false;
+  bool _isPicking = false;
 
   Future<void> _pickAndUploadDesign() async {
+    if (_isPicking || _isUploading) return;
+    setState(() {
+      _isPicking = true;
+    });
     try {
       final result = await FilePicker.platform.pickFiles(
         type: FileType.custom,
@@ -900,6 +913,9 @@ class _DesignUploadCardState extends State<_DesignUploadCard> {
       );
 
       if (result == null || result.files.isEmpty) {
+        setState(() {
+          _isPicking = false;
+        });
         return;
       }
 
@@ -908,12 +924,16 @@ class _DesignUploadCardState extends State<_DesignUploadCard> {
       final name = file.name;
 
       if (bytes == null) {
+        setState(() {
+          _isPicking = false;
+        });
         Get.snackbar('Upload Desain', 'Gagal membaca file.');
         return;
       }
 
       setState(() {
         _isUploading = true;
+        _isPicking = false;
       });
 
       final controller = Get.find<ActivityController>();
@@ -937,6 +957,7 @@ class _DesignUploadCardState extends State<_DesignUploadCard> {
       if (mounted) {
         setState(() {
           _isUploading = false;
+          _isPicking = false;
         });
       }
     }
@@ -986,12 +1007,14 @@ class _DesignUploadCardState extends State<_DesignUploadCard> {
             children: [
               const Icon(Icons.palette_outlined, color: Color(0xFF059669), size: 20),
               const SizedBox(width: 8),
-              Text(
-                'Desain Iklan (Banner)',
-                style: GoogleFonts.inter(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                  color: const Color(0xFF0F172A),
+              Expanded(
+                child: Text(
+                  'Desain Iklan (Banner)',
+                  style: GoogleFonts.inter(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: const Color(0xFF0F172A),
+                  ),
                 ),
               ),
             ],
