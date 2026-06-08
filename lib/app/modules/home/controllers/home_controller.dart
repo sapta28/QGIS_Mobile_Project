@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:get/get.dart';
 
 import '../../../data/services/api/user_api_service.dart';
+import '../../../../models/models.dart';
 
 class HomeController extends GetxController {
   HomeController(this._userApiService);
@@ -15,11 +16,13 @@ class HomeController extends GetxController {
   final pendingInvoicesCount = 0.obs;
   final isLoadingDashboard = false.obs;
   final errorMessage = ''.obs;
+  final campaignBundles = <CampaignBundleModel>[].obs;
 
   @override
   void onInit() {
     super.onInit();
     fetchDashboardSummary();
+    loadDummyCampaignBundles();
   }
 
   Future<void> fetchDashboardSummary() async {
@@ -51,6 +54,31 @@ class HomeController extends GetxController {
 
   void changeCampaignTab(int index) {
     selectedCampaignTab.value = index;
+  }
+
+  void loadDummyCampaignBundles() {
+    const data = [
+      CampaignBundleModel(
+        title: 'Dominate CBD',
+        subtitle: '3 Strategic Videotrons in Business Center',
+        imageUrl:
+            'https://images.unsplash.com/photo-1480714378408-67cf0d13bc1b?auto=format&fit=crop&w=600&q=80',
+      ),
+      CampaignBundleModel(
+        title: 'Holiday Special',
+        subtitle: 'Highway & Rest Area Dominance',
+        imageUrl:
+            'https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?auto=format&fit=crop&w=600&q=80',
+      ),
+      CampaignBundleModel(
+        title: 'Airport Takeover',
+        subtitle: 'All digital screens in Terminal 3',
+        imageUrl:
+            'https://images.unsplash.com/photo-1530521954074-e64f6810b32d?auto=format&fit=crop&w=600&q=80',
+      ),
+    ];
+
+    campaignBundles.assignAll(data);
   }
 
   int _toInt(Object? value) {

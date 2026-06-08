@@ -10,91 +10,112 @@ class CustomBottomNavbar extends StatelessWidget {
     required this.onItemTapped,
   }) : super(key: key);
 
-  static const Color _primary = Color(0xFF1E88E5);
+  static const Color _bg = Colors.white;
+  static const Color _activeColor = Colors.black;
+  static const Color _inactiveColor = Color(0xFFB0B8C1);
+  static const Color _strokeColor = Color(0xFFF1F5F9);
 
   @override
   Widget build(BuildContext context) {
-    return BottomAppBar(
-      padding: EdgeInsets.zero,
-      color: Colors.white,
-      shape: const CircularNotchedRectangle(),
-      notchMargin: 6.0,
-      elevation: 20,
-      shadowColor: Colors.black.withOpacity(0.1),
-      clipBehavior: Clip.antiAlias,
+    return Container(
+      decoration: BoxDecoration(
+        color: _bg,
+        border: const Border(
+          top: BorderSide(color: _strokeColor, width: 1.5),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 16,
+            offset: const Offset(0, -4),
+          ),
+        ],
+      ),
+      child: SafeArea(
+        top: false,
+        bottom: false, // Matikan jarak otomatis bawaan HP yang terlalu tinggi
+        child: Padding(
+          // KUNCI: Berikan jarak manual 8 piksel agar posisi turun tapi TIDAK mepet bezel
+          padding: const EdgeInsets.only(bottom: 15), 
+          child: SizedBox(
+            height: 68, // Tetap menggunakan ukuran 68 agar navbar tetap terlihat GEMUK
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                _buildNavItem(Icons.home_rounded, 'Home', 0),
+                _buildNavItem(Icons.receipt_long_rounded, 'Activity', 1),
+                
+                // Tombol Tengah
+                _buildCenterItem(),
+                
+                _buildNavItem(Icons.chat_bubble_rounded, 'Chat', 3),
+                _buildNavItem(Icons.person_rounded, 'Account', 4),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNavItem(IconData icon, String label, int index) {
+    final bool isActive = selectedIndex == index;
+    final Color color = isActive ? _activeColor : _inactiveColor;
+
+    return GestureDetector(
+      onTap: () => onItemTapped(index),
+      behavior: HitTestBehavior.opaque,
       child: SizedBox(
-        height: 56,
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
+        width: 60,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Expanded(
-              child: _navItem(Icons.home_outlined, Icons.home_rounded, 'Home', 0),
-            ),
-            Expanded(
-              child: _navItem(Icons.receipt_long_outlined, Icons.receipt_long_rounded, 'Activity', 1),
-            ),
-            Expanded(
-              child: _exploreLabel(),
-            ),
-            Expanded(
-              child: _navItem(Icons.inbox_outlined, Icons.inbox_rounded, 'Inbox', 3),
-            ),
-            Expanded(
-              child: _navItem(Icons.person_outline_rounded, Icons.person_rounded, 'Profile', 4),
-            ),
+            Icon(icon, color: color, size: 26),
+            const SizedBox(height: 6),
+            Text(
+              label,
+              style: TextStyle(
+                color: color,
+                fontSize: 10,
+                fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
+              ),
+            )
           ],
         ),
       ),
     );
   }
 
-  Widget _navItem(IconData outline, IconData solid, String label, int index) {
-    final bool isActive = selectedIndex == index;
-    final Color color = isActive ? _primary : const Color(0xFF94A3B8);
-
-    return GestureDetector(
-      onTap: () => onItemTapped(index),
-      behavior: HitTestBehavior.opaque,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(isActive ? solid : outline, color: color, size: 24),
-          const SizedBox(height: 2),
-          Text(
-            label,
-            style: TextStyle(
-              color: color,
-              fontSize: 10,
-              fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _exploreLabel() {
-    final bool isActive = selectedIndex == 2;
-
+  Widget _buildCenterItem() {
     return GestureDetector(
       onTap: () => onItemTapped(2),
-      behavior: HitTestBehavior.opaque,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const SizedBox(height: 24),
-          const SizedBox(height: 2),
-          Text(
-            'Explore',
-            style: TextStyle(
-              color: isActive ? _primary : const Color(0xFF94A3B8),
-              fontSize: 10,
-              fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
-            ),
+      child: Container(
+        width: 72,
+        height: 44,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(22),
+          gradient: const LinearGradient(
+            colors: [
+              Color(0xFFE0FF85), 
+              Color(0xFF86EFAC),
+            ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
           ),
-        ],
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF86EFAC).withOpacity(0.4),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: const Icon(
+          Icons.explore, 
+          color: Colors.black, 
+          size: 26,
+        ),
       ),
     );
   }

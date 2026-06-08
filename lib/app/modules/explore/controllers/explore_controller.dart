@@ -82,6 +82,11 @@ class ExploreController extends GetxController {
 			direction: _asString(item['facing_direction'], fallback: '-'),
 			lat: _toDouble(item['latitude']),
 			lng: _toDouble(item['longitude']),
+      isHeldByOthers: false,
+			printFee: _toNullableDouble(item['print_fee'] ?? item['mmt_fee'] ?? item['production_fee']),
+			installFee: _toNullableDouble(item['install_fee'] ?? item['installation_fee']),
+			taxRate: _toNullableDouble(item['tax_rate'] ?? item['vat_rate']),
+			downPaymentRate: _toNullableDouble(item['down_payment_rate'] ?? item['dp_rate']),
 		);
 	}
 
@@ -105,6 +110,16 @@ class ExploreController extends GetxController {
 			return value.toInt();
 		}
 		return int.tryParse(value?.toString() ?? '') ?? 0;
+	}
+
+	double? _toNullableDouble(Object? value) {
+		if (value == null) {
+			return null;
+		}
+		if (value is num) {
+			return value.toDouble();
+		}
+		return double.tryParse(value.toString());
 	}
 
 	String _getErrorMessage(Object error, String fallback) {
