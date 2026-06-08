@@ -68,6 +68,7 @@ class AuthApiService {
   Future<Map<String, dynamic>> updateProfile({
     String? name,
     String? email,
+    String? phone,
   }) async {
     final payload = <String, dynamic>{};
     if (name != null && name.trim().isNotEmpty) {
@@ -75,6 +76,9 @@ class AuthApiService {
     }
     if (email != null && email.trim().isNotEmpty) {
       payload['email'] = email.trim();
+    }
+    if (phone != null && phone.trim().isNotEmpty) {
+      payload['phone'] = phone.trim();
     }
 
     final response = await _client.patch(
