@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -438,10 +439,10 @@ class _BookingConfirmationScreenState extends State<BookingConfirmationScreen> {
               _goToBookingsTab();
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: (checkoutUrl != null && checkoutUrl!.isNotEmpty)
+              backgroundColor: (widget.checkoutUrl != null && widget.checkoutUrl!.isNotEmpty)
                   ? AppColors.surfaceContainer
                   : AppColors.primary,
-              foregroundColor: (checkoutUrl != null && checkoutUrl!.isNotEmpty)
+              foregroundColor: (widget.checkoutUrl != null && widget.checkoutUrl!.isNotEmpty)
                   ? AppColors.primary
                   : AppColors.onPrimary,
               padding: const EdgeInsets.symmetric(vertical: 18),
@@ -501,6 +502,21 @@ class _BookingConfirmationScreenState extends State<BookingConfirmationScreen> {
     final uri = Uri.tryParse(url);
     if (uri == null) {
       Get.snackbar('Payment', 'Link pembayaran tidak valid.');
+      return;
+    }
+
+    if (kIsWeb) {
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      } else {
+        Get.snackbar('Payment', 'Tidak dapat membuka link pembayaran.');
+      }
+      if (mounted) {
+        _goToBookingsTab();
+        if (Get.isRegistered<ActivityController>()) {
+          Get.find<ActivityController>().fetchActivities(status: null);
+        }
+      }
       return;
     }
 

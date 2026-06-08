@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_application_1/app/modules/explore/views/tripay_checkout_webview.dart';
 import 'package:get/get.dart';
@@ -658,6 +659,27 @@ class _BookingScreenState extends State<BookingScreen> {
       }
 
       if (checkoutUrl != null && checkoutUrl.isNotEmpty) {
+        if (kIsWeb) {
+          final uri = Uri.parse(checkoutUrl);
+          if (await canLaunchUrl(uri)) {
+            await launchUrl(uri, mode: LaunchMode.externalApplication);
+          } else {
+            Get.snackbar('Payment', 'Tidak dapat membuka link pembayaran.');
+          }
+          if (mounted) {
+            Get.until((route) => route.isFirst);
+            if (Get.isRegistered<HomeController>()) {
+              Get.find<HomeController>().changeNav(1);
+            }
+            if (Get.isRegistered<ActivityController>()) {
+              final actCtrl = Get.find<ActivityController>();
+              actCtrl.selectedTab.value = 2;
+              actCtrl.fetchActivities(status: 'pending');
+            }
+          }
+          return;
+        }
+
         final paid = await Get.to<bool>(
           () => TriPayCheckoutWebView(
             checkoutUrl: checkoutUrl!,

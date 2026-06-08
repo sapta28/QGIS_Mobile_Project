@@ -1,6 +1,8 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 
 import '../../../data/services/api/auth_api_service.dart';
 import '../../../routes/app_pages.dart';
@@ -9,6 +11,16 @@ class LoginController extends GetxController {
   LoginController(this._authApiService);
 
   final AuthApiService _authApiService;
+
+  final GoogleSignIn _googleSignIn = GoogleSignIn(
+    clientId: kIsWeb
+        ? '573957690170-2f2oqs3him5va5nvv4mkvohneksmv34n.apps.googleusercontent.com'
+        : '573957690170-s0rft8had6ogf68v2eu4q42tu96jhq4p.apps.googleusercontent.com',
+    serverClientId: kIsWeb
+        ? null
+        : '573957690170-s0rft8had6ogf68v2eu4q42tu96jhq4p.apps.googleusercontent.com',
+    scopes: ['email', 'profile'],
+  );
 
   final formKey = GlobalKey<FormState>();
   final emailController = TextEditingController();
@@ -61,8 +73,40 @@ class LoginController extends GetxController {
     Get.snackbar('Informasi', 'Fitur lupa kata sandi belum tersedia.');
   }
 
-  void onBiometricLogin() {
-    Get.snackbar('Informasi', 'Login biometrik masih dummy.');
+  Future<void> onBiometricLogin() async {
+    try {
+      isLoading.value = true;
+      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
+      if (googleUser == null) {
+        return;
+      }
+
+      final GoogleSignInAuthentication googleAuth =
+          await googleUser.authentication;
+      final String? idToken = googleAuth.idToken;
+      final String? accessToken = googleAuth.accessToken;
+
+      if (idToken != null || accessToken != null) {
+        final result = await _authApiService.loginWithGoogle(
+            idToken: idToken, accessToken: accessToken);
+        final message = result['message']?.toString() ?? 'Login Google berhasil.';
+        Get.snackbar('Login berhasil', message);
+        FocusManager.instance.primaryFocus?.unfocus();
+        Get.offAllNamed(Routes.HOME);
+      } else {
+        Get.snackbar('Login gagal', 'Gagal mendapatkan token otentikasi Google.');
+      }
+    } catch (error, stackTrace) {
+      debugPrint('Google Login Exception: $error');
+      debugPrint('Google Login StackTrace: $stackTrace');
+      final message = _getErrorMessage(error, 'Login Google gagal. Coba lagi.');
+      infoMessage.value = message;
+      Get.snackbar('Login gagal', message);
+    } finally {
+      if (!isClosed) {
+        isLoading.value = false;
+      }
+    }
   }
 
   Future<void> onRegisterCompany() async {

@@ -46,6 +46,20 @@ class AuthApiService {
     return data;
   }
 
+  Future<Map<String, dynamic>> loginWithGoogle({String? idToken, String? accessToken}) async {
+    final response = await _client.post(
+      ApiEndpoints.userGoogleLogin,
+      data: {
+        if (idToken != null) 'id_token': idToken,
+        if (accessToken != null) 'access_token': accessToken,
+      },
+    );
+
+    final data = _asMap(response.data);
+    await _saveTokenIfAvailable(data);
+    return data;
+  }
+
   Future<Map<String, dynamic>> me() async {
     final response = await _client.get(ApiEndpoints.userMe);
     return _asMap(response.data);

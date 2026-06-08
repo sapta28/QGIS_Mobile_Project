@@ -100,6 +100,28 @@ class UserApiService {
     return _asMap(response.data);
   }
 
+  Future<Map<String, dynamic>> uploadDesign({
+    required String activityId,
+    required List<int> fileBytes,
+    required String fileName,
+  }) async {
+    final formData = FormData.fromMap({
+      'design': MultipartFile.fromBytes(fileBytes, filename: fileName),
+    });
+    
+    // Override contentType header for multipart form data
+    final response = await _client.post(
+      ApiEndpoints.userActivityUploadDesign(activityId),
+      data: formData,
+      options: Options(
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      ),
+    );
+    return _asMap(response.data);
+  }
+
   Future<Map<String, dynamic>> getCompanyDetail(String id) async {
     final response = await _client.get(ApiEndpoints.userCompanyDetail(id));
     return _asMap(response.data);

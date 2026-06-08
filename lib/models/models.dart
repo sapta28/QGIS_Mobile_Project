@@ -100,6 +100,10 @@ class BookingModel {
   final double? remainingAmount;
   final String? approvalStatus;
   final List<dynamic>? paymentTracker;
+  final String? creativeUrl;
+  final String? creativeStatus;
+  final String? creativeName;
+  final String? creativeAdminNote;
 
   const BookingModel({
     required this.id,
@@ -120,6 +124,10 @@ class BookingModel {
     this.remainingAmount,
     this.approvalStatus,
     this.paymentTracker,
+    this.creativeUrl,
+    this.creativeStatus,
+    this.creativeName,
+    this.creativeAdminNote,
   });
 }
 

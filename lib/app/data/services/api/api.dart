@@ -3,7 +3,7 @@ class ApiEndpoints {
 
     static const String baseUrl = String.fromEnvironment(
         'API_BASE_URL',
-        defaultValue: 'http://192.168.1.2:8000/api',
+        defaultValue: 'http://127.0.0.1:8000/api',
     );
 
   // General
@@ -12,6 +12,7 @@ class ApiEndpoints {
   // User auth (public)
   static const String userRegister = "$baseUrl/v1/user/auth/register";
   static const String userLogin = "$baseUrl/v1/user/auth/login";
+  static const String userGoogleLogin = "$baseUrl/v1/user/auth/google";
 
   // Public user routes
   static const String userSpots = "$baseUrl/v1/user/spots";
@@ -30,6 +31,8 @@ class ApiEndpoints {
   static String userActivityDetail(String id) => "$baseUrl/v1/user/activities/$id";
   static String userActivityCancel(String id) =>
       "$baseUrl/v1/user/activities/$id/cancel";
+  static String userActivityUploadDesign(String id) =>
+      "$baseUrl/v1/user/activities/$id/upload-design";
 
   static String userCompanyDetail(String id) => "$baseUrl/v1/user/companies/$id";
   static String userCompanyUpdate(String id) => "$baseUrl/v1/user/companies/$id";

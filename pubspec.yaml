@@ -46,6 +46,7 @@ dependencies:
   flutter_compass: ^0.8.1
   url_launcher: ^6.3.2
   webview_flutter: ^4.10.0
+  google_sign_in: ^6.2.2
 
 dev_dependencies:
   flutter_test:

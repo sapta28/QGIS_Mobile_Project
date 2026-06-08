@@ -94,6 +94,36 @@ class ActivityController extends GetxController {
 		}
 	}
 
+	Future<bool> uploadDesign({
+		required String activityId,
+		required List<int> fileBytes,
+		required String fileName,
+	}) async {
+		if (isSubmitting.value) {
+			return false;
+		}
+
+		isSubmitting.value = true;
+		errorMessage.value = '';
+		try {
+			await _userApiService.uploadDesign(
+				activityId: activityId,
+				fileBytes: fileBytes,
+				fileName: fileName,
+			);
+			await fetchActivities(status: selectedStatus.value == 'all'
+				? null
+				: selectedStatus.value);
+			return true;
+		} catch (error) {
+			errorMessage.value = _getErrorMessage(error, 'Gagal mengupload desain.');
+			Get.snackbar('Upload Desain', errorMessage.value);
+			return false;
+		} finally {
+			isSubmitting.value = false;
+		}
+	}
+
 	List<BookingModel> bookingsForTab(int tabIndex) {
 		switch (tabIndex) {
 			case 0:
@@ -124,7 +154,7 @@ class ActivityController extends GetxController {
 	BookingModel _mapBooking(Map<String, dynamic> item) {
 		final spot = item['spot'];
 		final spotMap = spot is Map ? spot : <String, dynamic>{};
-		final rawStatus = _asString(item['status']);
+		final rawStatus = _asString(item['raw_status'] ?? item['status']);
 		final status = _mapStatus(rawStatus);
 		final paymentInfo = _extractPaymentInfo(item);
 
@@ -167,6 +197,11 @@ class ActivityController extends GetxController {
 			downPaymentAmount: paymentInfo['downPaymentAmount'],
 			remainingAmount: paymentInfo['remainingAmount'],
 			approvalStatus: paymentInfo['approvalStatus'],
+			paymentTracker: item['payments'],
+			creativeUrl: _asString(item['creative_url']),
+			creativeStatus: _asString(item['creative_status']),
+			creativeName: _asString(item['creative_name']),
+			creativeAdminNote: _asString(item['creative_admin_note']),
 		);
 	}
 

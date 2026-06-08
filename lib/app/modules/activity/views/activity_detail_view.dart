@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_application_1/app/modules/home/controllers/home_controller.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:file_picker/file_picker.dart';
 
 import '../../../../models/models.dart';
 import '../controllers/activity_controller.dart';
@@ -22,6 +24,30 @@ class _ActivityDetailViewState extends State<ActivityDetailView> {
   final _formKey = GlobalKey<FormState>();
 
   ActivityController get _controller => Get.find<ActivityController>();
+
+  String _getDisplayStatus(BookingModel booking) {
+    final rawStatus = (booking.rawStatus ?? booking.status).toLowerCase();
+    switch (rawStatus) {
+      case 'pending_payment':
+        return 'Menunggu Pembayaran DP';
+      case 'waiting_confirmation':
+        return 'DP Lunas (Silakan Upload Desain)';
+      case 'waiting_approval':
+        return 'Menunggu Persetujuan Desain';
+      case 'pending_pelunasan':
+        return 'Menunggu Pembayaran Pelunasan';
+      case 'active':
+        return 'Sedang Tayang';
+      case 'completed':
+        return 'Selesai';
+      case 'cancelled':
+        return 'Dibatalkan';
+      case 'rejected':
+        return 'Ditolak';
+      default:
+        return rawStatus.toUpperCase().replaceAll('_', ' ');
+    }
+  }
 
   @override
   void dispose() {
@@ -160,6 +186,8 @@ class _ActivityDetailViewState extends State<ActivityDetailView> {
               const SizedBox(height: 24),
               _PaymentActionsCard(booking: booking),
               const SizedBox(height: 24),
+              _DesignUploadCard(booking: booking),
+              const SizedBox(height: 24),
               Row(
                 children: [
                   const Icon(
@@ -198,7 +226,7 @@ class _ActivityDetailViewState extends State<ActivityDetailView> {
                   children: [
                     _InfoRow(
                       label: 'Status',
-                      value: (booking.rawStatus ?? booking.status).toUpperCase().replaceAll('_', ' '),
+                      value: _getDisplayStatus(booking),
                       valueColor: const Color(0xFF059669),
                     ),
                     _InfoRow(label: 'Reference', value: booking.referenceId),
@@ -357,74 +385,6 @@ class _ActivityDetailViewState extends State<ActivityDetailView> {
 
     return booking.status == 'active' ? 4 : 0;
   }
-
-  List<Step> _buildWorkflowSteps(BookingModel booking) {
-    final currentStep = _workflowCurrentStep(booking);
-
-    return [
-      _buildWorkflowStep(
-        title: 'Menunggu DP',
-        subtitle: 'User memilih titik reklame dan menunggu pembayaran uang muka.',
-        isActive: currentStep >= 0,
-        state: currentStep > 0 ? StepState.complete : StepState.indexed,
-      ),
-      _buildWorkflowStep(
-        title: 'DP Lunas',
-        subtitle: 'Slot reklame terkunci dan booking resmi tercatat.',
-        isActive: currentStep >= 1,
-        state: currentStep > 1 ? StepState.complete : (currentStep == 1 ? StepState.indexed : StepState.disabled),
-      ),
-      _buildWorkflowStep(
-        title: 'Menunggu Approval',
-        subtitle: 'Admin meninjau desain dan menentukan revisi atau approve.',
-        isActive: currentStep >= 2,
-        state: currentStep > 2 ? StepState.complete : (currentStep == 2 ? StepState.indexed : StepState.disabled),
-      ),
-      _buildWorkflowStep(
-        title: 'Menunggu Pelunasan',
-        subtitle: 'Termin akhir diterbitkan sebelum eksekusi cetak dan pemasangan.',
-        isActive: currentStep >= 3,
-        state: currentStep > 3 ? StepState.complete : (currentStep == 3 ? StepState.indexed : StepState.disabled),
-      ),
-      _buildWorkflowStep(
-        title: 'Ready to Install',
-        subtitle: 'Pelunasan selesai dan pekerjaan lapangan dapat dimulai.',
-        isActive: currentStep >= 4,
-        state: currentStep >= 4 ? StepState.complete : StepState.disabled,
-      ),
-    ];
-  }
-
-  Step _buildWorkflowStep({
-    required String title,
-    required String subtitle,
-    required bool isActive,
-    required StepState state,
-  }) {
-    return Step(
-      title: Text(
-        title,
-        style: GoogleFonts.inter(
-          fontSize: 14,
-          fontWeight: FontWeight.w700,
-          color: isActive ? const Color(0xFF0F172A) : const Color(0xFF94A3B8),
-        ),
-      ),
-      content: Align(
-        alignment: Alignment.centerLeft,
-        child: Text(
-          subtitle,
-          style: GoogleFonts.inter(
-            fontSize: 12,
-            height: 1.4,
-            color: const Color(0xFF64748B),
-          ),
-        ),
-      ),
-      isActive: isActive,
-      state: state,
-    );
-  }
 }
 
 class _PaymentActionsCard extends StatelessWidget {
@@ -435,11 +395,17 @@ class _PaymentActionsCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final paymentStatus = (booking.paymentStatus ?? '').toLowerCase();
-    final isDownPaymentPending = paymentStatus.isEmpty ||
-        paymentStatus == 'pending' ||
-        paymentStatus == 'unpaid' ||
-        paymentStatus == 'waiting';
-    final isFinalPaymentPending = paymentStatus == 'dp_paid' ||
+    final rawStatus = (booking.rawStatus ?? '').toLowerCase();
+
+    final isDownPaymentPending = rawStatus == 'pending_payment' ||
+        ((rawStatus.isEmpty || rawStatus == 'pending') &&
+            (paymentStatus.isEmpty ||
+                paymentStatus == 'pending' ||
+                paymentStatus == 'unpaid' ||
+                paymentStatus == 'waiting'));
+
+    final isFinalPaymentPending = rawStatus == 'pending_pelunasan' ||
+        paymentStatus == 'dp_paid' ||
         paymentStatus == 'waiting_final_payment' ||
         paymentStatus == 'final_payment_pending' ||
         paymentStatus == 'pending_final_payment';
@@ -455,15 +421,20 @@ class _PaymentActionsCard extends StatelessWidget {
         ),
       );
     }
-    if (isFinalPaymentPending && (booking.finalCheckoutUrl ?? '').isNotEmpty) {
-      buttons.add(
-        _PaymentButton(
-          label: 'Bayar Pelunasan',
-          subtitle: 'Lunasi sisa pembayaran sebelum eksekusi.',
-          color: const Color(0xFF2563EB),
-          onTap: () => _openCheckout(context, booking.finalCheckoutUrl!),
-        ),
-      );
+    if (isFinalPaymentPending) {
+      final url = (booking.finalCheckoutUrl ?? '').isNotEmpty
+          ? booking.finalCheckoutUrl
+          : booking.checkoutUrl;
+      if ((url ?? '').isNotEmpty) {
+        buttons.add(
+          _PaymentButton(
+            label: 'Bayar Pelunasan',
+            subtitle: 'Lunasi sisa pembayaran sebelum eksekusi.',
+            color: const Color(0xFF2563EB),
+            onTap: () => _openCheckout(context, url!),
+          ),
+        );
+      }
     }
 
     if (buttons.isEmpty) {
@@ -516,6 +487,24 @@ class _PaymentActionsCard extends StatelessWidget {
     final uri = Uri.tryParse(checkoutUrl);
     if (uri == null) {
       Get.snackbar('Payment', 'Link pembayaran tidak valid.');
+      return;
+    }
+
+    if (kIsWeb) {
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      } else {
+        Get.snackbar('Payment', 'Tidak dapat membuka link pembayaran.');
+      }
+      Get.until((route) => route.isFirst);
+      if (Get.isRegistered<HomeController>()) {
+        Get.find<HomeController>().changeNav(1);
+      }
+      if (Get.isRegistered<ActivityController>()) {
+        final actCtrl = Get.find<ActivityController>();
+        actCtrl.selectedTab.value = 2;
+        actCtrl.fetchActivities(status: 'pending');
+      }
       return;
     }
 
@@ -630,6 +619,89 @@ class _PaymentButton extends StatelessWidget {
   }
 }
 
+class _TrackerStep extends StatelessWidget {
+  const _TrackerStep({
+    required this.title,
+    required this.subtitle,
+    required this.isCompleted,
+    required this.isActive,
+    required this.isLast,
+  });
+
+  final String title;
+  final String subtitle;
+  final bool isCompleted;
+  final bool isActive;
+  final bool isLast;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Column(
+          children: [
+            Container(
+              width: 28,
+              height: 28,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: isCompleted
+                    ? const Color(0xFF059669)
+                    : isActive
+                        ? const Color(0xFF2563EB)
+                        : const Color(0xFFE2E8F0),
+                border: isActive
+                    ? Border.all(color: const Color(0xFF93C5FD), width: 3)
+                    : null,
+              ),
+              child: Icon(
+                isCompleted ? Icons.check : Icons.circle,
+                size: isCompleted ? 16 : 8,
+                color: isCompleted || isActive ? Colors.white : const Color(0xFF94A3B8),
+              ),
+            ),
+            if (!isLast)
+              Container(
+                width: 2,
+                height: 40,
+                color: isCompleted ? const Color(0xFF059669) : const Color(0xFFE2E8F0),
+              ),
+          ],
+        ),
+        const SizedBox(width: 16),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: GoogleFonts.inter(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: isCompleted || isActive
+                      ? const Color(0xFF0F172A)
+                      : const Color(0xFF94A3B8),
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                subtitle,
+                style: GoogleFonts.inter(
+                  fontSize: 12,
+                  height: 1.4,
+                  color: const Color(0xFF64748B),
+                ),
+              ),
+              const SizedBox(height: 12),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 class _BookingTrackerCard extends StatelessWidget {
   const _BookingTrackerCard({required this.booking});
 
@@ -639,6 +711,7 @@ class _BookingTrackerCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final detailState = _ActivityDetailStateScope.of(context);
     final isCancelled = detailState._isCancelled(booking);
+    final currentStep = detailState._workflowCurrentStep(booking);
 
     return Container(
       padding: const EdgeInsets.all(20),
@@ -661,7 +734,7 @@ class _BookingTrackerCard extends StatelessWidget {
               const Icon(Icons.stacked_line_chart_rounded, color: Color(0xFF059669), size: 20),
               const SizedBox(width: 8),
               Text(
-                'Tracker Pembayaran DP',
+                'Tracker Pembayaran DP & Pelunasan',
                 style: GoogleFonts.inter(
                   fontSize: 16,
                   fontWeight: FontWeight.w700,
@@ -679,7 +752,7 @@ class _BookingTrackerCard extends StatelessWidget {
               color: const Color(0xFF64748B),
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 20),
           if (isCancelled)
             Container(
               width: double.infinity,
@@ -698,24 +771,43 @@ class _BookingTrackerCard extends StatelessWidget {
                 ),
               ),
             )
-          else
-            Theme(
-              data: Theme.of(context).copyWith(
-                colorScheme: Theme.of(context).colorScheme.copyWith(
-                  primary: const Color(0xFF059669),
-                  onSurface: const Color(0xFF0F172A),
-                ),
-              ),
-              child: Stepper(
-                currentStep: detailState._workflowCurrentStep(booking).clamp(0, 4),
-                type: StepperType.vertical,
-                controlsBuilder: (context, details) => const SizedBox.shrink(),
-                physics: const NeverScrollableScrollPhysics(),
-                elevation: 0,
-                connectorColor: MaterialStateProperty.all(const Color(0xFFD1D5DB)),
-                steps: detailState._buildWorkflowSteps(booking),
-              ),
+          else ...[
+            _TrackerStep(
+              title: 'Menunggu DP',
+              subtitle: 'User memilih titik reklame dan menunggu pembayaran uang muka (30%).',
+              isCompleted: currentStep > 0,
+              isActive: currentStep == 0,
+              isLast: false,
             ),
+            _TrackerStep(
+              title: 'DP Lunas',
+              subtitle: 'Slot reklame terkunci dan booking resmi tercatat.',
+              isCompleted: currentStep > 1,
+              isActive: currentStep == 1,
+              isLast: false,
+            ),
+            _TrackerStep(
+              title: 'Menunggu Approval',
+              subtitle: 'Admin meninjau desain dan menentukan revisi atau approval.',
+              isCompleted: currentStep > 2,
+              isActive: currentStep == 2,
+              isLast: false,
+            ),
+            _TrackerStep(
+              title: 'Menunggu Pelunasan',
+              subtitle: 'Termin akhir (70%) diterbitkan sebelum eksekusi cetak dan pemasangan.',
+              isCompleted: currentStep > 3,
+              isActive: currentStep == 3,
+              isLast: false,
+            ),
+            _TrackerStep(
+              title: 'Ready to Install',
+              subtitle: 'Pelunasan selesai dan billboard siap dipasang di lokasi.',
+              isCompleted: currentStep >= 4,
+              isActive: currentStep == 4,
+              isLast: true,
+            ),
+          ],
         ],
       ),
     );
@@ -729,30 +821,6 @@ class _ActivityDetailStateScope extends InheritedWidget {
   });
 
   final _ActivityDetailViewState state;
-
-  String _getDisplayStatus(String rawStatus) {
-    switch (rawStatus) {
-      case 'pending_payment':
-      case 'pending':
-        return 'Pending (Belum melunasi DP)';
-      case 'waiting_confirmation':
-        return 'Pending (Menunggu Validasi Desain)';
-      case 'waiting_pelunasan':
-        return 'Pending (Menunggu Pelunasan)';
-      case 'approved':
-        return 'Siap Dipasang';
-      case 'active':
-        return 'Sedang Tayang';
-      case 'completed':
-        return 'Selesai';
-      case 'cancelled':
-        return 'Dibatalkan';
-      case 'rejected':
-        return 'Ditolak';
-      default:
-        return rawStatus.toUpperCase().replaceAll('_', ' ');
-    }
-  }
 
   static _ActivityDetailViewState of(BuildContext context) {
     final scope = context.dependOnInheritedWidgetOfExactType<_ActivityDetailStateScope>();
@@ -806,6 +874,272 @@ class _InfoRow extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _DesignUploadCard extends StatefulWidget {
+  const _DesignUploadCard({required this.booking});
+
+  final BookingModel booking;
+
+  @override
+  State<_DesignUploadCard> createState() => _DesignUploadCardState();
+}
+
+class _DesignUploadCardState extends State<_DesignUploadCard> {
+  bool _isUploading = false;
+
+  Future<void> _pickAndUploadDesign() async {
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['jpg', 'jpeg', 'png'],
+        withData: true,
+      );
+
+      if (result == null || result.files.isEmpty) {
+        return;
+      }
+
+      final file = result.files.first;
+      final bytes = file.bytes;
+      final name = file.name;
+
+      if (bytes == null) {
+        Get.snackbar('Upload Desain', 'Gagal membaca file.');
+        return;
+      }
+
+      setState(() {
+        _isUploading = true;
+      });
+
+      final controller = Get.find<ActivityController>();
+      final success = await controller.uploadDesign(
+        activityId: widget.booking.id,
+        fileBytes: bytes,
+        fileName: name,
+      );
+
+      if (success) {
+        Get.snackbar(
+          'Upload Berhasil',
+          'Desain banner berhasil diunggah dan sedang ditinjau.',
+          backgroundColor: const Color(0xFF059669),
+          colorText: Colors.white,
+        );
+      }
+    } catch (e) {
+      Get.snackbar('Upload Desain', 'Terjadi kesalahan: $e');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isUploading = false;
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final booking = widget.booking;
+    final hasCreative = (booking.creativeUrl ?? '').isNotEmpty;
+    final rawStatus = (booking.rawStatus ?? '').toLowerCase();
+
+    // Show upload section if:
+    // 1. Creative has not been uploaded yet, AND status is pending_payment, waiting_confirmation, or waiting_approval
+    // 2. Creative is uploaded but status is revision_requested or rejected, allowing re-upload
+    final canUpload = (!hasCreative &&
+            (rawStatus == 'pending_payment' ||
+                rawStatus == 'waiting_confirmation' ||
+                rawStatus == 'waiting_approval')) ||
+        (hasCreative &&
+            (booking.creativeStatus == 'rejected' ||
+                booking.creativeStatus == 'revision_requested' ||
+                rawStatus == 'waiting_confirmation'));
+
+    // If we can't upload and there is no creative uploaded yet, hide the card
+    if (!canUpload && !hasCreative) {
+      return const SizedBox.shrink();
+    }
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.palette_outlined, color: Color(0xFF059669), size: 20),
+              const SizedBox(width: 8),
+              Text(
+                'Desain Iklan (Banner)',
+                style: GoogleFonts.inter(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: const Color(0xFF0F172A),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Unggah file materi banner dengan format JPG/PNG (maksimal 5MB) untuk ditinjau oleh admin.',
+            style: GoogleFonts.inter(
+              fontSize: 12,
+              height: 1.4,
+              color: const Color(0xFF64748B),
+            ),
+          ),
+          const SizedBox(height: 16),
+          if (hasCreative) ...[
+            ClipRRect(
+              borderRadius: BorderRadius.circular(16),
+              child: Image.network(
+                booking.creativeUrl!,
+                height: 150,
+                width: double.infinity,
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) {
+                  return Container(
+                    height: 150,
+                    color: const Color(0xFFF1F5F9),
+                    alignment: Alignment.center,
+                    child: const Icon(Icons.broken_image_outlined, size: 40, color: Color(0xFF94A3B8)),
+                  );
+                },
+              ),
+            ),
+            const SizedBox(height: 12),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Text(
+                    booking.creativeName ?? 'Materi Desain',
+                    style: GoogleFonts.inter(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: const Color(0xFF0F172A),
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                _buildStatusBadge(booking.creativeStatus),
+              ],
+            ),
+            if (booking.creativeStatus == 'rejected' || booking.creativeStatus == 'revision_requested') ...[
+              const SizedBox(height: 8),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFEF2F2),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFFFEE2E2)),
+                ),
+                child: Text(
+                  'Catatan Admin: ${booking.creativeAdminNote ?? "Desain ditolak, silakan upload materi revisi."}',
+                  style: GoogleFonts.inter(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                    color: const Color(0xFF991B1B),
+                  ),
+                ),
+              ),
+            ],
+            const SizedBox(height: 16),
+          ],
+          if (canUpload)
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: _isUploading ? null : _pickAndUploadDesign,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF059669),
+                  foregroundColor: Colors.white,
+                  disabledBackgroundColor: const Color(0xFF059669).withOpacity(0.5),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  elevation: 0,
+                ),
+                child: _isUploading
+                    ? const SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white),
+                      )
+                    : Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(Icons.cloud_upload_outlined, size: 20),
+                          const SizedBox(width: 8),
+                          Text(
+                            hasCreative ? 'Upload Desain Revisi' : 'Upload Desain Banner',
+                            style: GoogleFonts.inter(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
+                      ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatusBadge(String? status) {
+    final cleanStatus = (status ?? 'pending_review').toLowerCase();
+    String label = 'Menunggu Review';
+    Color bgColor = const Color(0xFFFEF3C7);
+    Color textColor = const Color(0xFFD97706);
+
+    if (cleanStatus == 'approved' || cleanStatus == 'approve') {
+      label = 'Disetujui';
+      bgColor = const Color(0xFFD1FAE5);
+      textColor = const Color(0xFF059669);
+    } else if (cleanStatus == 'rejected' || cleanStatus == 'reject') {
+      label = 'Ditolak';
+      bgColor = const Color(0xFFFEE2E2);
+      textColor = const Color(0xFFDC2626);
+    } else if (cleanStatus == 'revision_requested') {
+      label = 'Revisi Diminta';
+      bgColor = const Color(0xFFFFEDD5);
+      textColor = const Color(0xFFEA580C);
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Text(
+        label,
+        style: GoogleFonts.inter(
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+          color: textColor,
+        ),
       ),
     );
   }
