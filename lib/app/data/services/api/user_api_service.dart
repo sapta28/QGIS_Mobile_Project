@@ -151,6 +151,26 @@ class UserApiService {
     return _asMap(response.data);
   }
 
+  Future<String?> payFinalActivity(String activityId) async {
+    try {
+      final response = await _client.post(ApiEndpoints.userActivityPayFinal(activityId));
+      final data = _asMap(response.data);
+      return data['checkout_url'] as String?;
+    } on DioException catch (e) {
+      String msg = 'Gagal membuat URL pembayaran.';
+      final resData = e.response?.data;
+      if (resData is Map && resData['message'] is String) {
+        msg = resData['message'];
+      }
+      print('payFinalActivity error: $msg');
+      return null;
+    } catch (e) {
+      print('payFinalActivity error: $e');
+      return null;
+    }
+  }
+
+
   Future<Map<String, dynamic>> getDashboardData() async {
     final response = await _client.get(ApiEndpoints.dashboardData);
     return _asMap(response.data);
