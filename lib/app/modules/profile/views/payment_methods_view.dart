@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-import '../../../../core/theme.dart';
+import '../../../../widgets/common_widgets.dart';
 import '../controllers/profile_controller.dart';
 
 class PaymentMethodsView extends StatefulWidget {
@@ -15,34 +15,21 @@ class PaymentMethodsView extends StatefulWidget {
 class _PaymentMethodsViewState extends State<PaymentMethodsView> {
   final _profileController = Get.find<ProfileController>();
 
-  void _handleConfirm() {
-    Get.snackbar(
-      'Payment Methods',
-      'Payment preferences confirmed successfully',
-      snackPosition: SnackPosition.BOTTOM,
-      backgroundColor: AppColors.primary,
-      colorText: Colors.white,
-      margin: const EdgeInsets.all(16),
-      borderRadius: 12,
-      icon: const Icon(Icons.check_circle_outline, color: Colors.white),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: const Color(0xFFF8FAFC),
       appBar: PreferredSize(
         preferredSize: const Size.fromHeight(64),
         child: SafeArea(
           child: Container(
             height: 64,
             padding: const EdgeInsets.symmetric(horizontal: 16),
-            decoration: BoxDecoration(
-              color: AppColors.surface.withOpacity(0.9),
+            decoration: const BoxDecoration(
+              color: Colors.white,
               border: Border(
                 bottom: BorderSide(
-                  color: AppColors.outlineVariant.withOpacity(0.3),
+                  color: Color(0xFFE2E8F0),
                   width: 1,
                 ),
               ),
@@ -60,17 +47,17 @@ class _PaymentMethodsViewState extends State<PaymentMethodsView> {
                       ),
                       icon: const Icon(
                         Icons.arrow_back_rounded,
-                        color: AppColors.primary,
+                        color: Color(0xFF059669),
                         size: 24,
                       ),
                     ),
                     const SizedBox(width: 8),
                     Text(
-                      'Payment Methods',
+                      'Payment & Booking',
                       style: GoogleFonts.inter(
                         fontSize: 18,
                         fontWeight: FontWeight.w700,
-                        color: AppColors.primary,
+                        color: const Color(0xFF0F172A),
                         letterSpacing: -0.01 * 18,
                       ),
                     ),
@@ -80,18 +67,18 @@ class _PaymentMethodsViewState extends State<PaymentMethodsView> {
                   final displayName = _profileController.name.value;
                   final avatarUrl = _profileController.avatarUrl.value;
                   final fallbackAvatar =
-                      'https://ui-avatars.com/api/?name=${Uri.encodeComponent(displayName.isNotEmpty ? displayName : "User")}&background=003ec7&color=fff&size=128';
+                      'https://ui-avatars.com/api/?name=${Uri.encodeComponent(displayName.isNotEmpty ? displayName : "User")}&background=059669&color=fff&size=128';
                   return Container(
                     width: 36,
                     height: 36,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       border: Border.all(
-                        color: AppColors.outlineVariant.withOpacity(0.2),
+                        color: const Color(0xFFE2E8F0),
                         width: 1,
                       ),
                       image: DecorationImage(
-                        image: NetworkImage(avatarUrl.isNotEmpty ? avatarUrl : fallbackAvatar),
+                        image: getAvatarProvider(avatarUrl, fallbackAvatar),
                         fit: BoxFit.cover,
                       ),
                     ),
@@ -110,330 +97,93 @@ class _PaymentMethodsViewState extends State<PaymentMethodsView> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Saved cards section header
-                  _buildSectionHeader('Saved Cards', '2 TOTAL'),
-                  const SizedBox(height: 12),
-
-                  // Card 1: Default Visa
-                  _buildPaymentCard(
-                    isDefault: true,
-                    icon: Icons.credit_card_rounded,
-                    brandName: 'Visa',
-                    cardNumber: '••••  ••••  ••••  4242',
-                    expiry: '12/25',
-                    color: AppColors.primary,
-                  ),
-                  const SizedBox(height: 14),
-
-                  // Card 2: Mastercard
-                  _buildPaymentCard(
-                    isDefault: false,
-                    icon: Icons.payments_outlined,
-                    brandName: 'Mastercard',
-                    cardNumber: '••••  ••••  ••••  8812',
-                    expiry: '09/24',
-                    color: const Color(0xFF7C5800), // secondary/gold tint
-                    opacity: 0.8,
-                  ),
+                  _buildIntroCard(),
+                  const SizedBox(height: 24),
+                  _buildSectionTitle('Langkah Pemesanan & Pembayaran'),
                   const SizedBox(height: 16),
-
-                  // Add New Method Button (dashed-style container)
-                  _buildAddNewMethodButton(),
+                  _buildBookingSteps(),
+                  const SizedBox(height: 24),
+                  _buildSectionTitle('Ketentuan Pembayaran'),
+                  const SizedBox(height: 16),
+                  _buildPaymentTermsCard(),
                   const SizedBox(height: 32),
-
-                  // Billing Address Section
-                  _buildSectionHeader('Billing Address', null),
-                  const SizedBox(height: 12),
-                  _buildBillingAddressCard(),
-                  const SizedBox(height: 28),
-
-                  // Other Options
-                  _buildOptionRow(
-                    icon: Icons.account_balance_outlined,
-                    title: 'Bank Account (ACH)',
-                  ),
-                  const SizedBox(height: 10),
-                  _buildOptionRow(
-                    icon: Icons.wallet_outlined,
-                    title: 'Digital Wallets',
-                  ),
-                  const SizedBox(height: 48),
                 ],
               ),
             ),
           ),
-          // Confirm changes bottom button
           _buildBottomActionBar(),
         ],
       ),
     );
   }
 
-  Widget _buildSectionHeader(String title, String? trailingText) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(
-          title.toUpperCase(),
-          style: GoogleFonts.inter(
-            fontSize: 12,
-            fontWeight: FontWeight.w700,
-            letterSpacing: 0.05 * 12,
-            color: AppColors.onSurfaceVariant.withOpacity(0.8),
-          ),
-        ),
-        if (trailingText != null)
-          Text(
-            trailingText,
-            style: GoogleFonts.inter(
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 0.05 * 12,
-              color: AppColors.primary,
-            ),
-          ),
-      ],
-    );
-  }
-
-  Widget _buildPaymentCard({
-    required bool isDefault,
-    required IconData icon,
-    required String brandName,
-    required String cardNumber,
-    required String expiry,
-    required Color color,
-    double opacity = 1.0,
-  }) {
-    return Opacity(
-      opacity: opacity,
-      child: Container(
-        width: double.infinity,
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: AppColors.outlineVariant.withOpacity(0.2),
-            width: 1,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.03),
-              blurRadius: 8,
-              offset: const Offset(0, 3),
-            ),
-          ],
-        ),
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    if (isDefault) ...[
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: AppColors.primary.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Text(
-                          'DEFAULT',
-                          style: GoogleFonts.inter(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: 0.05 * 10,
-                            color: AppColors.primary,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                    ],
-                    Icon(
-                      icon,
-                      color: color,
-                      size: 32,
-                    ),
-                  ],
-                ),
-                IconButton(
-                  onPressed: () {},
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(),
-                  icon: const Icon(
-                    Icons.more_vert_rounded,
-                    color: AppColors.onSurfaceVariant,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Text(
-              cardNumber,
-              style: GoogleFonts.inter(
-                fontSize: 18,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 0.1 * 18,
-                color: AppColors.onSurface,
-              ),
-            ),
-            const SizedBox(height: 12),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'EXPIRY',
-                      style: GoogleFonts.inter(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w600,
-                        letterSpacing: 0.05 * 10,
-                        color: AppColors.onSurfaceVariant.withOpacity(0.7),
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      expiry,
-                      style: GoogleFonts.inter(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w500,
-                        color: AppColors.onSurface,
-                      ),
-                    ),
-                  ],
-                ),
-                Text(
-                  brandName,
-                  style: GoogleFonts.inter(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                    fontStyle: FontStyle.italic,
-                    color: color.withOpacity(0.5),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
+  Widget _buildSectionTitle(String title) {
+    return Text(
+      title,
+      style: GoogleFonts.inter(
+        fontSize: 16,
+        fontWeight: FontWeight.w700,
+        color: const Color(0xFF0F172A),
       ),
     );
   }
 
-  Widget _buildAddNewMethodButton() {
+  Widget _buildIntroCard() {
     return Container(
       width: double.infinity,
-      height: 58,
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.transparent,
+        gradient: const LinearGradient(
+          colors: [Color(0xFF059669), Color(0xFF047857)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
         borderRadius: BorderRadius.circular(16),
-      ),
-      child: OutlinedButton(
-        onPressed: () {},
-        style: OutlinedButton.styleFrom(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF059669).withOpacity(0.2),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
           ),
-          side: BorderSide(
-            color: AppColors.outlineVariant.withOpacity(0.5),
-            width: 1.5,
-            style: BorderStyle.solid, // Note: standard flutter doesn't do dashed out of box, so we use solid with opacity.
-          ),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(
-              Icons.add_circle_outline_rounded,
-              color: AppColors.primary,
-              size: 20,
-            ),
-            const SizedBox(width: 8),
-            Text(
-              'Add New Method',
-              style: GoogleFonts.inter(
-                fontSize: 14,
-                fontWeight: FontWeight.w700,
-                color: AppColors.primary,
-              ),
-            ),
-          ],
-        ),
+        ],
       ),
-    );
-  }
-
-  Widget _buildBillingAddressCard() {
-    return Container(
-      width: double.infinity,
-      decoration: BoxDecoration(
-        color: AppColors.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: AppColors.outlineVariant.withOpacity(0.2),
-          width: 1,
-        ),
-      ),
-      padding: const EdgeInsets.all(16),
-      child: Row(
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: AppColors.surface,
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(
-                color: AppColors.outlineVariant.withOpacity(0.2),
-                width: 1,
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.2),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.info_outline_rounded,
+                  color: Colors.white,
+                  size: 24,
+                ),
               ),
-            ),
-            child: const Icon(
-              Icons.location_on_outlined,
-              color: AppColors.primary,
-              size: 20,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Primary Residence',
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'Sistem Pembayaran Terintegrasi',
                   style: GoogleFonts.inter(
-                    fontSize: 14,
+                    fontSize: 16,
                     fontWeight: FontWeight.w700,
-                    color: AppColors.onSurface,
+                    color: Colors.white,
                   ),
                 ),
-                const SizedBox(height: 6),
-                Text(
-                  '725 Highview Towers, Suite 402\nFinancial District, Metropolis 10122\nUnited States',
-                  style: GoogleFonts.inter(
-                    fontSize: 13,
-                    height: 1.45,
-                    color: AppColors.onSurfaceVariant,
-                  ),
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
-          IconButton(
-            onPressed: () {},
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(),
-            icon: const Icon(
-              Icons.edit_rounded,
-              color: AppColors.primary,
-              size: 20,
+          const SizedBox(height: 12),
+          Text(
+            'Kami menggunakan sistem pembayaran otomatis melalui payment gateway TriPay untuk memudahkan Anda dalam memesan titik billboard iklan dengan aman dan terverifikasi secara instan.',
+            style: GoogleFonts.inter(
+              fontSize: 13,
+              height: 1.5,
+              color: Colors.white.withOpacity(0.9),
             ),
           ),
         ],
@@ -441,54 +191,158 @@ class _PaymentMethodsViewState extends State<PaymentMethodsView> {
     );
   }
 
-  Widget _buildOptionRow({
-    required IconData icon,
-    required String title,
-  }) {
-    return Container(
-      width: double.infinity,
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: AppColors.outlineVariant.withOpacity(0.15),
-          width: 1,
-        ),
+  Widget _buildBookingSteps() {
+    final steps = [
+      _StepData(
+        icon: Icons.map_outlined,
+        title: 'Pilih Lokasi Billboard',
+        description: 'Cari dan tentukan titik billboard strategis yang Anda inginkan melalui menu peta atau daftar billboard.',
       ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: () {},
-          borderRadius: BorderRadius.circular(12),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Row(
+      _StepData(
+        icon: Icons.calendar_month_outlined,
+        title: 'Atur Tanggal & Durasi',
+        description: 'Pilih tanggal mulai pemasangan serta durasi sewa billboard (minimal sewa 1 bulan).',
+      ),
+      _StepData(
+        icon: Icons.cloud_upload_outlined,
+        title: 'Unggah Desain Kreatif',
+        description: 'Unggah banner iklan Anda (.png, .jpg, .pdf) beresolusi tinggi. Anda juga dapat memilih opsi untuk mengunggah desain nanti.',
+      ),
+      _StepData(
+        icon: Icons.payment_outlined,
+        title: 'Pilih Metode Pembayaran',
+        description: 'Pilih channel pembayaran yang tersedia melalui TriPay, seperti Virtual Account Bank, QRIS, atau E-Wallet.',
+      ),
+      _StepData(
+        icon: Icons.payments_outlined,
+        title: 'Bayar Down Payment (DP)',
+        description: 'Lakukan pembayaran DP minimal 30% dari nilai transaksi untuk mengunci dan mengamankan pemesanan titik billboard.',
+      ),
+      _StepData(
+        icon: Icons.assignment_turned_in_outlined,
+        title: 'Verifikasi & Pelunasan',
+        description: 'Admin akan memeriksa pesanan dan desain Anda. Lakukan pelunasan sebelum pemasangan banner dimulai.',
+      ),
+    ];
+
+    return Column(
+      children: List.generate(steps.length, (index) {
+        final step = steps[index];
+        final isLast = index == steps.length - 1;
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Column(
               children: [
-                Icon(
-                  icon,
-                  color: AppColors.onSurfaceVariant,
-                  size: 22,
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Text(
-                    title,
-                    style: GoogleFonts.inter(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.onSurface,
+                Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFECFDF5),
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: const Color(0xFF059669),
+                      width: 1.5,
+                    ),
+                  ),
+                  child: Center(
+                    child: Icon(
+                      step.icon,
+                      size: 18,
+                      color: const Color(0xFF059669),
                     ),
                   ),
                 ),
-                const Icon(
-                  Icons.chevron_right_rounded,
-                  color: AppColors.outline,
-                  size: 20,
+                if (!isLast)
+                  Container(
+                    width: 2,
+                    height: 52,
+                    color: const Color(0xFFD1FAE5),
+                  ),
+              ],
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.only(top: 2, bottom: 20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Langkah ${index + 1}: ${step.title}',
+                      style: GoogleFonts.inter(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: const Color(0xFF0F172A),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      step.description,
+                      style: GoogleFonts.inter(
+                        fontSize: 13,
+                        height: 1.45,
+                        color: const Color(0xFF64748B),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        );
+      }),
+    );
+  }
+
+  Widget _buildPaymentTermsCard() {
+    final terms = [
+      'Pembayaran Down Payment (DP) harus diselesaikan paling lambat dalam waktu 24 jam setelah proses checkout pemesanan.',
+      'Jika pembayaran DP tidak diselesaikan dalam batas waktu tersebut, maka pemesanan billboard akan otomatis dibatalkan oleh sistem.',
+      'Sisa pelunasan biaya sewa (70% sisanya) wajib dibayarkan sebelum banner diproduksi atau mulai dipasang di titik billboard.',
+      'Desain banner yang diunggah harus memenuhi kriteria dan disetujui oleh admin. Jika ditolak, Anda dapat melakukan revisi desain di menu Activity.',
+    ];
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: const Color(0xFFE2E8F0),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        children: terms.map((term) {
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Padding(
+                  padding: EdgeInsets.only(top: 4, right: 12),
+                  child: Icon(
+                    Icons.check_circle_outline_rounded,
+                    color: Color(0xFF059669),
+                    size: 16,
+                  ),
+                ),
+                Expanded(
+                  child: Text(
+                    term,
+                    style: GoogleFonts.inter(
+                      fontSize: 13,
+                      height: 1.45,
+                      color: const Color(0xFF64748B),
+                    ),
+                  ),
                 ),
               ],
             ),
-          ),
-        ),
+          );
+        }).toList(),
       ),
     );
   }
@@ -498,11 +352,11 @@ class _PaymentMethodsViewState extends State<PaymentMethodsView> {
     return Container(
       width: double.infinity,
       padding: EdgeInsets.fromLTRB(20, 16, 20, bottomPadding > 0 ? bottomPadding + 8 : 16),
-      decoration: BoxDecoration(
-        color: AppColors.surface.withOpacity(0.95),
+      decoration: const BoxDecoration(
+        color: Colors.white,
         border: Border(
           top: BorderSide(
-            color: AppColors.outlineVariant.withOpacity(0.25),
+            color: Color(0xFFE2E8F0),
             width: 1,
           ),
         ),
@@ -511,19 +365,18 @@ class _PaymentMethodsViewState extends State<PaymentMethodsView> {
         width: double.infinity,
         height: 56,
         child: ElevatedButton(
-          onPressed: _handleConfirm,
+          onPressed: () => Get.back(),
           style: ElevatedButton.styleFrom(
-            backgroundColor: AppColors.primary,
-            foregroundColor: AppColors.onPrimary,
-            elevation: 2,
-            shadowColor: AppColors.primary.withOpacity(0.3),
+            backgroundColor: const Color(0xFF059669),
+            foregroundColor: Colors.white,
+            elevation: 0,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(14),
             ),
             padding: const EdgeInsets.symmetric(vertical: 16),
           ),
           child: Text(
-            'Confirm Changes',
+            'Pahami & Kembali',
             style: GoogleFonts.inter(
               fontSize: 16,
               fontWeight: FontWeight.w700,
@@ -534,4 +387,16 @@ class _PaymentMethodsViewState extends State<PaymentMethodsView> {
       ),
     );
   }
+}
+
+class _StepData {
+  final IconData icon;
+  final String title;
+  final String description;
+
+  _StepData({
+    required this.icon,
+    required this.title,
+    required this.description,
+  });
 }

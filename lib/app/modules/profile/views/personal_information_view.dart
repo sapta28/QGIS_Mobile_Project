@@ -1,8 +1,9 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:file_picker/file_picker.dart';
 
-import '../../../../core/theme.dart';
 import '../controllers/profile_controller.dart';
 
 class PersonalInformationView extends StatefulWidget {
@@ -17,17 +18,16 @@ class _PersonalInformationViewState extends State<PersonalInformationView> {
   late final TextEditingController _nameController;
   late final TextEditingController _emailController;
   late final TextEditingController _phoneController;
-  late final TextEditingController _locationController;
 
   final _formKey = GlobalKey<FormState>();
+  bool _isPicking = false;
 
   @override
   void initState() {
     super.initState();
     _nameController = TextEditingController(text: _profileController.name.value);
     _emailController = TextEditingController(text: _profileController.email.value);
-    _phoneController = TextEditingController(text: '+1 234 567 890');
-    _locationController = TextEditingController(text: 'New York, USA');
+    _phoneController = TextEditingController(text: _profileController.phone.value);
   }
 
   @override
@@ -35,25 +35,61 @@ class _PersonalInformationViewState extends State<PersonalInformationView> {
     _nameController.dispose();
     _emailController.dispose();
     _phoneController.dispose();
-    _locationController.dispose();
     super.dispose();
+  }
+
+  Future<void> _pickProfilePhoto() async {
+    if (_isPicking) return;
+    setState(() {
+      _isPicking = true;
+    });
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.image,
+        withData: true,
+      );
+      if (result != null && result.files.isNotEmpty) {
+        final file = result.files.first;
+        if (file.path != null) {
+          _profileController.updateLocalAvatar(file.path!);
+        }
+      }
+    } catch (e) {
+      Get.snackbar('Error', 'Gagal memilih foto: $e');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isPicking = false;
+        });
+      }
+    }
+  }
+
+  ImageProvider _getAvatarProvider(String url, String fallback) {
+    if (url.isEmpty) {
+      return NetworkImage(fallback);
+    }
+    if (url.startsWith('http://') || url.startsWith('https://')) {
+      return NetworkImage(url);
+    }
+    return FileImage(File(url));
   }
 
   Future<void> _handleSave() async {
     if (!_formKey.currentState!.validate()) return;
 
-    // Call controller to update name & email on backend
     final success = await _profileController.updateProfile(
       name: _nameController.text.trim(),
       email: _emailController.text.trim(),
+      phone: _phoneController.text.trim(),
     );
 
     if (success && mounted) {
       Get.snackbar(
-        'Success',
-        'Profile information saved successfully',
+        'Berhasil',
+        'Informasi profil berhasil diperbarui',
         snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: AppColors.primary,
+        backgroundColor: const Color(0xFF059669),
         colorText: Colors.white,
         margin: const EdgeInsets.all(16),
         borderRadius: 12,
@@ -65,18 +101,18 @@ class _PersonalInformationViewState extends State<PersonalInformationView> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: const Color(0xFFF8FAFC),
       appBar: PreferredSize(
         preferredSize: const Size.fromHeight(64),
         child: SafeArea(
           child: Container(
             height: 64,
             padding: const EdgeInsets.symmetric(horizontal: 16),
-            decoration: BoxDecoration(
-              color: AppColors.surface.withOpacity(0.9),
+            decoration: const BoxDecoration(
+              color: Colors.white,
               border: Border(
                 bottom: BorderSide(
-                  color: AppColors.outlineVariant.withOpacity(0.3),
+                  color: Color(0xFFE2E8F0),
                   width: 1,
                 ),
               ),
@@ -94,7 +130,7 @@ class _PersonalInformationViewState extends State<PersonalInformationView> {
                       ),
                       icon: const Icon(
                         Icons.arrow_back_rounded,
-                        color: AppColors.primary,
+                        color: Color(0xFF059669),
                         size: 24,
                       ),
                     ),
@@ -104,7 +140,7 @@ class _PersonalInformationViewState extends State<PersonalInformationView> {
                       style: GoogleFonts.inter(
                         fontSize: 18,
                         fontWeight: FontWeight.w700,
-                        color: AppColors.primary,
+                        color: const Color(0xFF0F172A),
                         letterSpacing: -0.01 * 18,
                       ),
                     ),
@@ -114,18 +150,18 @@ class _PersonalInformationViewState extends State<PersonalInformationView> {
                   final displayName = _profileController.name.value;
                   final avatarUrl = _profileController.avatarUrl.value;
                   final fallbackAvatar =
-                      'https://ui-avatars.com/api/?name=${Uri.encodeComponent(displayName.isNotEmpty ? displayName : "User")}&background=003ec7&color=fff&size=128';
+                      'https://ui-avatars.com/api/?name=${Uri.encodeComponent(displayName.isNotEmpty ? displayName : "User")}&background=059669&color=fff&size=128';
                   return Container(
                     width: 36,
                     height: 36,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       border: Border.all(
-                        color: AppColors.outlineVariant.withOpacity(0.2),
+                        color: const Color(0xFFE2E8F0),
                         width: 1,
                       ),
                       image: DecorationImage(
-                        image: NetworkImage(avatarUrl.isNotEmpty ? avatarUrl : fallbackAvatar),
+                        image: _getAvatarProvider(avatarUrl, fallbackAvatar),
                         fit: BoxFit.cover,
                       ),
                     ),
@@ -146,17 +182,15 @@ class _PersonalInformationViewState extends State<PersonalInformationView> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    // Avatar profile picture section
                     _buildAvatarSection(),
                     const SizedBox(height: 32),
 
-                    // Inputs list
-                    _buildInputLabel('Full Name'),
+                    _buildInputLabel('Nama Perusahaan'),
                     _buildInputField(
                       controller: _nameController,
-                      icon: Icons.person_outline_rounded,
-                      hint: 'Enter your full name',
-                      validator: (v) => v == null || v.isEmpty ? 'Name is required' : null,
+                      icon: Icons.business_rounded,
+                      hint: 'Masukkan nama perusahaan Anda',
+                      validator: (v) => v == null || v.isEmpty ? 'Nama perusahaan wajib diisi' : null,
                     ),
                     const SizedBox(height: 18),
 
@@ -164,13 +198,9 @@ class _PersonalInformationViewState extends State<PersonalInformationView> {
                     _buildInputField(
                       controller: _emailController,
                       icon: Icons.mail_outline_rounded,
-                      hint: 'Enter your email address',
+                      hint: 'Masukkan alamat email Anda',
                       keyboardType: TextInputType.emailAddress,
-                      validator: (v) {
-                        if (v == null || v.isEmpty) return 'Email is required';
-                        if (!GetUtils.isEmail(v)) return 'Enter a valid email';
-                        return null;
-                      },
+                      readOnly: true,
                     ),
                     const SizedBox(height: 18),
 
@@ -178,36 +208,8 @@ class _PersonalInformationViewState extends State<PersonalInformationView> {
                     _buildInputField(
                       controller: _phoneController,
                       icon: Icons.call_outlined,
-                      hint: 'Enter your phone number',
+                      hint: 'Masukkan nomor telepon Anda',
                       keyboardType: TextInputType.phone,
-                    ),
-                    const SizedBox(height: 18),
-
-                    _buildInputLabel('Location'),
-                    _buildInputField(
-                      controller: _locationController,
-                      icon: Icons.location_on_outlined,
-                      hint: 'Enter your location',
-                    ),
-                    const SizedBox(height: 28),
-
-                    // Bento Grid Section
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _buildBentoCard(
-                            label: 'Language',
-                            value: 'English (US)',
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: _buildBentoCard(
-                            label: 'Timezone',
-                            value: 'EST (GMT-5)',
-                          ),
-                        ),
-                      ],
                     ),
                     const SizedBox(height: 48),
                   ],
@@ -215,7 +217,6 @@ class _PersonalInformationViewState extends State<PersonalInformationView> {
               ),
             ),
           ),
-          // Fixed Bottom Button Container
           _buildBottomActionBar(),
         ],
       ),
@@ -232,13 +233,13 @@ class _PersonalInformationViewState extends State<PersonalInformationView> {
               final displayName = _profileController.name.value;
               final avatarUrl = _profileController.avatarUrl.value;
               final fallbackAvatar =
-                  'https://ui-avatars.com/api/?name=${Uri.encodeComponent(displayName.isNotEmpty ? displayName : "User")}&background=003ec7&color=fff&size=256';
+                  'https://ui-avatars.com/api/?name=${Uri.encodeComponent(displayName.isNotEmpty ? displayName : "User")}&background=059669&color=fff&size=256';
               return Container(
                 width: 112,
                 height: 112,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: AppColors.surface,
+                  color: Colors.white,
                   border: Border.all(color: Colors.white, width: 4),
                   boxShadow: [
                     BoxShadow(
@@ -248,7 +249,7 @@ class _PersonalInformationViewState extends State<PersonalInformationView> {
                     ),
                   ],
                   image: DecorationImage(
-                    image: NetworkImage(avatarUrl.isNotEmpty ? avatarUrl : fallbackAvatar),
+                    image: _getAvatarProvider(avatarUrl, fallbackAvatar),
                     fit: BoxFit.cover,
                   ),
                 ),
@@ -257,24 +258,27 @@ class _PersonalInformationViewState extends State<PersonalInformationView> {
             Positioned(
               bottom: 0,
               right: 0,
-              child: Container(
-                width: 38,
-                height: 38,
-                decoration: BoxDecoration(
-                  color: AppColors.primaryContainer,
-                  shape: BoxShape.circle,
-                  border: Border.all(color: Colors.white, width: 2),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.12),
-                      blurRadius: 6,
-                    ),
-                  ],
-                ),
-                child: const Icon(
-                  Icons.photo_camera_rounded,
-                  color: Colors.white,
-                  size: 18,
+              child: GestureDetector(
+                onTap: _pickProfilePhoto,
+                child: Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF059669),
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.white, width: 2),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.12),
+                        blurRadius: 6,
+                      ),
+                    ],
+                  ),
+                  child: const Icon(
+                    Icons.photo_camera_rounded,
+                    color: Colors.white,
+                    size: 18,
+                  ),
                 ),
               ),
             ),
@@ -287,7 +291,7 @@ class _PersonalInformationViewState extends State<PersonalInformationView> {
             fontSize: 12,
             fontWeight: FontWeight.w600,
             letterSpacing: 0.15 * 12,
-            color: AppColors.outline.withOpacity(0.8),
+            color: const Color(0xFF64748B),
           ),
         ),
       ],
@@ -305,7 +309,7 @@ class _PersonalInformationViewState extends State<PersonalInformationView> {
             fontSize: 11,
             fontWeight: FontWeight.w700,
             letterSpacing: 0.05 * 11,
-            color: AppColors.primary,
+            color: const Color(0xFF059669),
           ),
         ),
       ),
@@ -318,95 +322,56 @@ class _PersonalInformationViewState extends State<PersonalInformationView> {
     required String hint,
     TextInputType keyboardType = TextInputType.text,
     String? Function(String?)? validator,
+    bool readOnly = false,
   }) {
     return TextFormField(
       controller: controller,
       keyboardType: keyboardType,
       validator: validator,
+      readOnly: readOnly,
       style: GoogleFonts.inter(
         fontSize: 15,
         fontWeight: FontWeight.w500,
-        color: AppColors.onSurface,
+        color: readOnly ? const Color(0xFF64748B) : const Color(0xFF0F172A),
       ),
       decoration: InputDecoration(
         hintText: hint,
         hintStyle: GoogleFonts.inter(
-          color: AppColors.outlineVariant,
+          color: const Color(0xFFCBD5E1),
           fontSize: 15,
         ),
-        prefixIcon: Icon(icon, color: AppColors.outline, size: 22),
+        prefixIcon: Icon(icon, color: const Color(0xFF64748B), size: 22),
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
         filled: true,
-        fillColor: AppColors.surfaceContainerLow.withOpacity(0.5),
+        fillColor: readOnly ? const Color(0xFFF1F5F9) : Colors.white,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide(
-            color: AppColors.outlineVariant.withOpacity(0.3),
+          borderSide: const BorderSide(
+            color: Color(0xFFE2E8F0),
             width: 1,
           ),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide(
-            color: AppColors.outlineVariant.withOpacity(0.3),
+          borderSide: const BorderSide(
+            color: Color(0xFFE2E8F0),
             width: 1,
           ),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
           borderSide: const BorderSide(
-            color: AppColors.primary,
+            color: Color(0xFF059669),
             width: 1.5,
           ),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
           borderSide: const BorderSide(
-            color: AppColors.error,
+            color: Colors.red,
             width: 1,
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _buildBentoCard({
-    required String label,
-    required String value,
-  }) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: AppColors.outlineVariant.withOpacity(0.2),
-          width: 1,
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label.toUpperCase(),
-            style: GoogleFonts.inter(
-              fontSize: 10,
-              fontWeight: FontWeight.w600,
-              letterSpacing: 0.05 * 10,
-              color: AppColors.outline,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            value,
-            style: GoogleFonts.inter(
-              fontSize: 16,
-              fontWeight: FontWeight.w700,
-              color: AppColors.onSurface,
-            ),
-          ),
-        ],
       ),
     );
   }
@@ -416,11 +381,11 @@ class _PersonalInformationViewState extends State<PersonalInformationView> {
     return Container(
       width: double.infinity,
       padding: EdgeInsets.fromLTRB(20, 16, 20, bottomPadding > 0 ? bottomPadding + 8 : 16),
-      decoration: BoxDecoration(
-        color: AppColors.surface.withOpacity(0.95),
+      decoration: const BoxDecoration(
+        color: Colors.white,
         border: Border(
           top: BorderSide(
-            color: AppColors.outlineVariant.withOpacity(0.25),
+            color: Color(0xFFE2E8F0),
             width: 1,
           ),
         ),
@@ -433,10 +398,9 @@ class _PersonalInformationViewState extends State<PersonalInformationView> {
           child: ElevatedButton(
             onPressed: isSaving ? null : _handleSave,
             style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              foregroundColor: AppColors.onPrimary,
-              elevation: 2,
-              shadowColor: AppColors.primary.withOpacity(0.3),
+              backgroundColor: const Color(0xFF059669),
+              foregroundColor: Colors.white,
+              elevation: 0,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(14),
               ),

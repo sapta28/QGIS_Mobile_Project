@@ -3,10 +3,14 @@ import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-import '../../../../core/theme.dart';
+import '../../../../widgets/common_widgets.dart';
 import '../controllers/profile_controller.dart';
 import 'personal_information_view.dart';
 import 'payment_methods_view.dart';
+import 'saved_billboards_view.dart';
+import 'campaign_history_view.dart';
+import 'help_center_view.dart';
+import '../../home/controllers/home_controller.dart';
 
 class ProfileView extends GetView<ProfileController> {
   const ProfileView({super.key});
@@ -36,8 +40,12 @@ class ProfileView extends GetView<ProfileController> {
             const _PageBackground(),
             SafeArea(
               bottom: false,
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(0, 0, 0, 100),
+              child: RefreshIndicator(
+                color: const Color(0xFF059669),
+                onRefresh: controller.fetchProfile,
+                child: SingleChildScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: const EdgeInsets.fromLTRB(0, 0, 0, 100),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -69,10 +77,19 @@ class ProfileView extends GetView<ProfileController> {
                           subtitle: 'Manage cards and billing details',
                           onTap: () => Get.to(() => const PaymentMethodsView()),
                         ),
-                        const ProfileMenuItem(
+                        ProfileMenuItem(
                           icon: Icons.notifications_outlined,
                           label: 'Notifications',
                           subtitle: 'Manage alerts for bookings and deals',
+                          onTap: () => controller.toggleNotifications(!controller.isNotificationsEnabled.value),
+                          trailing: Obx(() => Switch(
+                                value: controller.isNotificationsEnabled.value,
+                                onChanged: (value) => controller.toggleNotifications(value),
+                                activeColor: const Color(0xFF059669),
+                                activeTrackColor: const Color(0xFFD1FAE5),
+                                inactiveThumbColor: const Color(0xFF94A3B8),
+                                inactiveTrackColor: const Color(0xFFE2E8F0),
+                              )),
                         ),
                       ],
                     ),
@@ -82,17 +99,19 @@ class ProfileView extends GetView<ProfileController> {
                       child: _SectionHeader(label: 'Platform'),
                     ),
                     const SizedBox(height: 12),
-                    const _MenuGroup(
+                    _MenuGroup(
                       items: [
                         ProfileMenuItem(
                           icon: Icons.favorite_outline,
                           label: 'Saved Billboards',
                           subtitle: 'View your shortlisted inventory',
+                          onTap: () => Get.to(() => const SavedBillboardsView()),
                         ),
                         ProfileMenuItem(
                           icon: Icons.history,
                           label: 'Campaign History',
                           subtitle: 'Review past and active rentals',
+                          onTap: () => Get.to(() => const CampaignHistoryView()),
                         ),
                       ],
                     ),
@@ -102,15 +121,21 @@ class ProfileView extends GetView<ProfileController> {
                       child: _SectionHeader(label: 'Support'),
                     ),
                     const SizedBox(height: 12),
-                    const _MenuGroup(
+                    _MenuGroup(
                       items: [
                         ProfileMenuItem(
                           icon: Icons.help_outline,
                           label: 'Help Center',
+                          onTap: () => Get.to(() => const HelpCenterView()),
                         ),
                         ProfileMenuItem(
                           icon: Icons.chat_bubble_outline,
                           label: 'Contact Support',
+                          onTap: () {
+                            if (Get.isRegistered<HomeController>()) {
+                              Get.find<HomeController>().changeNav(3);
+                            }
+                          },
                         ),
                       ],
                     ),
@@ -133,6 +158,7 @@ class ProfileView extends GetView<ProfileController> {
                   ],
                 ),
               ),
+            ),
             ),
           ],
         ),
@@ -184,9 +210,7 @@ class _UserIdentitySection extends StatelessWidget {
                     ),
                   ],
                   image: DecorationImage(
-                    image: NetworkImage(
-                      avatarUrl.isNotEmpty ? avatarUrl : fallbackAvatar,
-                    ),
+                    image: getAvatarProvider(avatarUrl, fallbackAvatar),
                     fit: BoxFit.cover,
                   ),
                 ),
@@ -370,6 +394,7 @@ class ProfileMenuItem {
   final String? subtitle;
   final Color? iconColor;
   final VoidCallback? onTap;
+  final Widget? trailing;
 
   const ProfileMenuItem({
     required this.icon,
@@ -377,6 +402,7 @@ class ProfileMenuItem {
     this.subtitle,
     this.iconColor,
     this.onTap,
+    this.trailing,
   });
 }
 
@@ -429,11 +455,12 @@ class _MenuTile extends StatelessWidget {
                       ],
                     ),
                   ),
-                  const Icon(
-                    Icons.chevron_right_rounded,
-                    color: Color(0xFFCBD5E1),
-                    size: 24,
-                  ),
+                  item.trailing ??
+                      const Icon(
+                        Icons.chevron_right_rounded,
+                        color: Color(0xFFCBD5E1),
+                        size: 24,
+                      ),
                 ],
               ),
             ),
