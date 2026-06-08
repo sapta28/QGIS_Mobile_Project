@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:get/get.dart';
 
 class TriPayCheckoutWebView extends StatefulWidget {
   final String checkoutUrl;
@@ -24,20 +26,27 @@ class _TriPayCheckoutWebViewState extends State<TriPayCheckoutWebView> {
     super.initState();
     _controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
+      ..setUserAgent("Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1")
       ..setNavigationDelegate(
         NavigationDelegate(
-          onPageStarted: (_) {
+          onPageStarted: (url) {
+            debugPrint('TriPayCheckoutWebView started loading: $url');
             if (mounted) {
               setState(() => _isLoading = true);
             }
           },
-          onPageFinished: (_) {
+          onPageFinished: (url) {
+            debugPrint('TriPayCheckoutWebView finished loading: $url');
             if (mounted) {
               setState(() => _isLoading = false);
             }
           },
+          onWebResourceError: (error) {
+            debugPrint('TriPayCheckoutWebView resource error: ${error.description}, code: ${error.errorCode}, type: ${error.errorType}');
+          },
           onNavigationRequest: (request) {
             final url = request.url.toLowerCase();
+            debugPrint('TriPayCheckoutWebView navigation request to: $url');
             if (_looksLikePaymentCompleted(url)) {
               if (mounted) {
                 Navigator.of(context).pop(true);
@@ -48,7 +57,11 @@ class _TriPayCheckoutWebViewState extends State<TriPayCheckoutWebView> {
           },
         ),
       )
-      ..loadRequest(Uri.parse(widget.checkoutUrl));
+      ..loadRequest(Uri.parse(_normalizeUrl(widget.checkoutUrl)));
+  }
+
+  String _normalizeUrl(String url) {
+    return url;
   }
 
   bool _looksLikePaymentCompleted(String url) {
@@ -66,6 +79,24 @@ class _TriPayCheckoutWebViewState extends State<TriPayCheckoutWebView> {
       appBar: AppBar(
         title: Text(widget.title),
         centerTitle: true,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.open_in_browser_rounded),
+            tooltip: 'Buka di Browser',
+            onPressed: () async {
+              final uri = Uri.tryParse(_normalizeUrl(widget.checkoutUrl));
+              if (uri != null) {
+                if (await canLaunchUrl(uri)) {
+                  await launchUrl(uri, mode: LaunchMode.externalApplication);
+                } else {
+                  Get.snackbar('Payment', 'Tidak dapat membuka browser.');
+                }
+              } else {
+                Get.snackbar('Payment', 'Link pembayaran tidak valid.');
+              }
+            },
+          ),
+        ],
       ),
       body: Stack(
         children: [
