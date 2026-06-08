@@ -83,6 +83,22 @@ class _ExploreViewState extends State<ExploreView> {
     super.initState();
     _ensureDependencies();
     _initLocation();
+
+    // Auto-fokus peta dan buka panel saat filteredBillboards berubah
+    // (dipicu oleh perubahan search, filter kategori, atau data baru dari API)
+    ever(_controller.filteredBillboards, (List<BillboardModel> filtered) {
+      if (!mounted) return;
+      if (filtered.isNotEmpty && _controller.selectedCategory.value != null) {
+        _focusOnBillboards(filtered);
+        if (_sheetController.isAttached) {
+          _sheetController.animateTo(
+            0.6,
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeOutCubic,
+          );
+        }
+      }
+    });
   }
 
   void _ensureDependencies() {
@@ -119,13 +135,13 @@ class _ExploreViewState extends State<ExploreView> {
       body: Stack(
         children: [
           Obx(() {
-            if (_controller.billboards.isNotEmpty && !_didFocusBillboards) {
+            if (_controller.filteredBillboards.isNotEmpty && !_didFocusBillboards) {
               _didFocusBillboards = true;
               WidgetsBinding.instance.addPostFrameCallback((_) {
-                if (!mounted || _controller.billboards.isEmpty) {
+                if (!mounted || _controller.filteredBillboards.isEmpty) {
                   return;
                 }
-                _focusOnBillboards(_controller.billboards);
+                _focusOnBillboards(_controller.filteredBillboards);
               });
             }
 
@@ -151,7 +167,7 @@ class _ExploreViewState extends State<ExploreView> {
                 _buildTileLayer(),
                 MarkerLayer(
                   markers: [
-                    ..._controller.billboards.map(_buildMarker),
+                    ..._controller.filteredBillboards.map(_buildMarker),
                     if (_userPosition != null) _buildUserMarker(),
                     if (_selectedBillboard != null) _buildPopupMarker(_selectedBillboard!),
                   ],
@@ -294,7 +310,7 @@ class _ExploreViewState extends State<ExploreView> {
                   List<Map<String, dynamic>> sortedBillboards = [];
 
                   if (_userPosition != null) {
-                    for (var b in _controller.billboards) {
+                    for (var b in _controller.filteredBillboards) {
                       double dist = Geolocator.distanceBetween(
                         _userPosition!.latitude, _userPosition!.longitude,
                         b.lat, b.lng,
@@ -304,20 +320,26 @@ class _ExploreViewState extends State<ExploreView> {
                     sortedBillboards.sort((a, b) =>
                         (a['distance'] as double).compareTo(b['distance'] as double));
                   } else {
-                    for (var b in _controller.billboards) {
+                    for (var b in _controller.filteredBillboards) {
                       sortedBillboards.add({'billboard': b, 'distance': null});
                     }
                   }
 
-                  return ListView.builder(
+                  return RefreshIndicator(
+                    color: const Color(0xFF059669),
+                    onRefresh: () => _controller.fetchSpots(),
+                    child: ListView.builder(
                     controller: scrollController,
                     // Padding bottom dibuat 120 agar item paling bawah tidak tertutup Navbar
                     padding: const EdgeInsets.only(top: 0, bottom: 120),
-                    itemCount: _controller.billboards.isEmpty ? 2 : sortedBillboards.length + 1,
+                    itemCount: _controller.filteredBillboards.isEmpty ? 2 : sortedBillboards.length + 1,
                     itemBuilder: (context, index) {
                       
                       // --- HEADER DRAG HANDLE ---
                       if (index == 0) {
+                        final hasFilter = _controller.selectedCategory.value != null;
+                        final hasSearch = _controller.searchQuery.value.isNotEmpty;
+                        final count = sortedBillboards.length;
                         return Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
@@ -338,14 +360,59 @@ class _ExploreViewState extends State<ExploreView> {
                                 children: [
                                   const Icon(Icons.explore, color: Colors.black, size: 22),
                                   const SizedBox(width: 10),
-                                  Text(
-                                    'Di Sekitar Anda',
-                                    style: GoogleFonts.inter(
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.w800,
-                                      color: Colors.black,
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Text(
+                                          hasFilter || hasSearch
+                                              ? 'Hasil Pencarian'
+                                              : 'Di Sekitar Anda',
+                                          style: GoogleFonts.inter(
+                                            fontSize: 18,
+                                            fontWeight: FontWeight.w800,
+                                            color: Colors.black,
+                                          ),
+                                        ),
+                                        if (_controller.filteredBillboards.isNotEmpty)
+                                          Text(
+                                            '$count billboard ditemukan',
+                                            style: GoogleFonts.inter(
+                                              fontSize: 12,
+                                              color: AppColors.outline,
+                                            ),
+                                          ),
+                                      ],
                                     ),
                                   ),
+                                  // Badge filter aktif
+                                  if (hasFilter)
+                                    GestureDetector(
+                                      onTap: _controller.clearCategoryFilter,
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                        decoration: BoxDecoration(
+                                          color: AppColors.primary.withOpacity(0.1),
+                                          borderRadius: BorderRadius.circular(12),
+                                        ),
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Text(
+                                              _controller.selectedCategory.value!,
+                                              style: GoogleFonts.inter(
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.w600,
+                                                color: AppColors.primary,
+                                              ),
+                                            ),
+                                            const SizedBox(width: 4),
+                                            const Icon(Icons.close, size: 14, color: AppColors.primary),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
                                 ],
                               ),
                             ),
@@ -356,12 +423,61 @@ class _ExploreViewState extends State<ExploreView> {
                       }
 
                       // --- STATE LOADING ---
-                      if (_controller.billboards.isEmpty) {
+                      if (_controller.filteredBillboards.isEmpty && _controller.isLoading.value) {
                         return const Padding(
                           padding: EdgeInsets.all(32.0),
                           child: Center(child: CircularProgressIndicator()),
                         );
+                      } else if (_controller.filteredBillboards.isEmpty) {
+                        final hasFilter = _controller.selectedCategory.value != null;
+                        final hasSearch = _controller.searchQuery.value.isNotEmpty;
+                        return Padding(
+                          padding: const EdgeInsets.all(32.0),
+                          child: Center(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  hasSearch ? Icons.search_off : Icons.location_off,
+                                  color: AppColors.outline,
+                                  size: 48,
+                                ),
+                                const SizedBox(height: 12),
+                                Text(
+                                  hasSearch
+                                      ? 'Tidak ada hasil untuk "${_controller.searchQuery.value}"'
+                                      : hasFilter
+                                          ? 'Tidak ada "${_controller.selectedCategory.value}" di area ini'
+                                          : 'Tidak ada data billboard',
+                                  style: GoogleFonts.inter(
+                                    color: AppColors.outline,
+                                    fontSize: 14,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                                if (hasFilter || hasSearch)
+                                  Padding(
+                                    padding: const EdgeInsets.only(top: 12),
+                                    child: TextButton(
+                                      onPressed: () {
+                                        _controller.clearCategoryFilter();
+                                        _controller.clearSearch();
+                                      },
+                                      child: Text(
+                                        'Hapus filter & pencarian',
+                                        style: GoogleFonts.inter(
+                                          color: AppColors.primary,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
+                        );
                       }
+
 
                       // --- LIST ITEM ---
                       final item = sortedBillboards[index - 1];
@@ -399,6 +515,7 @@ class _ExploreViewState extends State<ExploreView> {
                           ),
                       );
                     },
+                  ),
                   );
                 }),
               );
@@ -640,63 +757,67 @@ class _ExploreViewState extends State<ExploreView> {
   Marker _buildPopupMarker(BillboardModel billboard) {
     return Marker(
       point: LatLng(billboard.lat, billboard.lng),
-      width: 400,
-      height: 300,
+      width: 280,
+      height: 200,
       alignment: Alignment.topCenter,
-      child: UnconstrainedBox(
-        alignment: Alignment.bottomCenter,
-        child: Padding(
-          padding: const EdgeInsets.only(bottom: 24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: [
-              Stack(
-                alignment: Alignment.bottomCenter,
-                clipBehavior: Clip.none,
-                children: [
-                  Container(
-                    margin: const EdgeInsets.only(bottom: 10),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(24),
-                      border: Border.all(color: AppColors.primary.withOpacity(0.3), width: 1.5),
-                      boxShadow: [
-                        BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 10, offset: const Offset(0, 4)),
-                      ],
-                    ),
-                    child: _PropertyPreviewCard(
-                      billboard: billboard,
-                      onTap: () {
-                        Navigator.of(context).push(MaterialPageRoute(builder: (_) => BillboardDetailScreen(billboard: billboard)));
-                      },
-                    ),
-                  ),
-                  Positioned(
-                    bottom: 0,
-                    child: SizedBox(
-                      width: 24,
-                      height: 14,
-                      child: Stack(
-                        children: [
-                          ClipPath(
-                            clipper: _TriangleClipper(),
-                            child: Container(color: AppColors.primary.withOpacity(0.3)),
-                          ),
-                          Padding(
-                            padding: const EdgeInsets.only(bottom: 1.5),
-                            child: ClipPath(
-                              clipper: _TriangleClipper(),
-                              child: Container(color: Colors.white),
-                            ),
-                          ),
+      child: ClipRect(
+        child: OverflowBox(
+          maxWidth: 280,
+          maxHeight: 200,
+          alignment: Alignment.topCenter,
+          child: Padding(
+            padding: const EdgeInsets.only(bottom: 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                Stack(
+                  alignment: Alignment.bottomCenter,
+                  clipBehavior: Clip.none,
+                  children: [
+                    Container(
+                      margin: const EdgeInsets.only(bottom: 10),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: AppColors.primary.withOpacity(0.3), width: 1.5),
+                        boxShadow: [
+                          BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 10, offset: const Offset(0, 4)),
                         ],
                       ),
+                      child: _PropertyPreviewCard(
+                        billboard: billboard,
+                        onTap: () {
+                          Navigator.of(context).push(MaterialPageRoute(builder: (_) => BillboardDetailScreen(billboard: billboard)));
+                        },
+                      ),
                     ),
-                  ),
-                ],
-              ),
-            ],
+                    Positioned(
+                      bottom: 0,
+                      child: SizedBox(
+                        width: 24,
+                        height: 14,
+                        child: Stack(
+                          children: [
+                            ClipPath(
+                              clipper: _TriangleClipper(),
+                              child: Container(color: AppColors.primary.withOpacity(0.3)),
+                            ),
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 1.5),
+                              child: ClipPath(
+                                clipper: _TriangleClipper(),
+                                child: Container(color: Colors.white),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -743,7 +864,196 @@ class _ExploreViewState extends State<ExploreView> {
   }
 }
 
-class _SearchBar extends StatelessWidget {
+class _SearchBar extends StatefulWidget {
+  @override
+  State<_SearchBar> createState() => _SearchBarState();
+}
+
+class _SearchBarState extends State<_SearchBar> {
+  final _controller = Get.find<ExploreController>();
+  final _textController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    // Sync jika ada nilai awal
+    _textController.text = _controller.searchQuery.value;
+  }
+
+  @override
+  void dispose() {
+    _textController.dispose();
+    super.dispose();
+  }
+
+  void _showFilterSheet() {
+    final categories = [
+      'Billboard',
+      'Videotron',
+      'LED',
+      'Neon Box',
+      'Bando',
+      'Megatron',
+    ];
+
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.white,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (ctx, setModalState) {
+            return SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Handle
+                    Center(
+                      child: Container(
+                        width: 40,
+                        height: 4,
+                        margin: const EdgeInsets.only(bottom: 16),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFE2E8F0),
+                          borderRadius: BorderRadius.circular(99),
+                        ),
+                      ),
+                    ),
+                    Text(
+                      'Filter Billboard',
+                      style: GoogleFonts.inter(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                        color: const Color(0xFF0F172A),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Pilih jenis media yang ingin ditampilkan',
+                      style: GoogleFonts.inter(
+                        fontSize: 13,
+                        color: const Color(0xFF64748B),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    Text(
+                      'Jenis Media',
+                      style: GoogleFonts.inter(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: const Color(0xFF475569),
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Obx(() {
+                      final selected = _controller.selectedCategory.value;
+                      return Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: categories.map((cat) {
+                          final isActive = selected == cat;
+                          return GestureDetector(
+                            onTap: () {
+                              if (isActive) {
+                                _controller.clearCategoryFilter();
+                              } else {
+                                _controller.setCategoryFilter(cat);
+                              }
+                              setModalState(() {});
+                            },
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 150),
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                              decoration: BoxDecoration(
+                                color: isActive ? const Color(0xFF059669) : const Color(0xFFF1F5F9),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: isActive ? const Color(0xFF059669) : const Color(0xFFE2E8F0),
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  if (isActive) ...[  
+                                    const Icon(Icons.check_circle, color: Colors.white, size: 16),
+                                    const SizedBox(width: 6),
+                                  ],
+                                  Text(
+                                    cat,
+                                    style: GoogleFonts.inter(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                      color: isActive ? Colors.white : const Color(0xFF475569),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        }).toList(),
+                      );
+                    }),
+                    const SizedBox(height: 24),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton(
+                            onPressed: () {
+                              _controller.clearCategoryFilter();
+                              Navigator.pop(ctx);
+                            },
+                            style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              side: const BorderSide(color: Color(0xFFE2E8F0)),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            ),
+                            child: Text(
+                              'Reset Filter',
+                              style: GoogleFonts.inter(
+                                fontWeight: FontWeight.w600,
+                                color: const Color(0xFF64748B),
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: ElevatedButton(
+                            onPressed: () => Navigator.pop(ctx),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF059669),
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              elevation: 0,
+                            ),
+                            child: Text(
+                              'Terapkan',
+                              style: GoogleFonts.inter(
+                                fontWeight: FontWeight.w600,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Row(
@@ -770,8 +1080,10 @@ class _SearchBar extends StatelessWidget {
                 const SizedBox(width: 12),
                 Expanded(
                   child: TextField(
+                    controller: _textController,
+                    onChanged: (val) => _controller.setSearchQuery(val),
                     decoration: InputDecoration(
-                      hintText: 'Search locations, zones...',
+                      hintText: 'Cari lokasi, zona, jenis...',
                       hintStyle: GoogleFonts.inter(
                         fontSize: 14,
                         color: AppColors.outline,
@@ -786,33 +1098,50 @@ class _SearchBar extends StatelessWidget {
                     ),
                   ),
                 ),
+                Obx(() => _controller.searchQuery.value.isNotEmpty
+                  ? GestureDetector(
+                      onTap: () {
+                        _textController.clear();
+                        _controller.clearSearch();
+                      },
+                      child: const Icon(Icons.close, color: AppColors.outline, size: 18),
+                    )
+                  : const SizedBox.shrink()
+                ),
               ],
             ),
           ),
         ),
         const SizedBox(width: 8),
-        Container(
-          width: 48,
-          height: 48,
-          decoration: BoxDecoration(
-            color: AppColors.surfaceContainerLowest,
-            borderRadius: BorderRadius.circular(24),
-            border: Border.all(color: AppColors.surfaceContainerHigh),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.08),
-                blurRadius: 24,
-                offset: const Offset(0, 4),
+        Obx(() {
+          final hasFilter = _controller.selectedCategory.value != null;
+          return Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              color: hasFilter ? const Color(0xFF059669) : AppColors.surfaceContainerLowest,
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(
+                color: hasFilter ? const Color(0xFF059669) : AppColors.surfaceContainerHigh,
               ),
-            ],
-          ),
-          child: IconButton(
-            icon: const Icon(Icons.tune, color: AppColors.onSurfaceVariant, size: 20),
-            onPressed: () {
-              Get.snackbar('Filter', 'Filter belum tersedia.');
-            },
-          ),
-        ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.08),
+                  blurRadius: 24,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: IconButton(
+              icon: Icon(
+                Icons.tune,
+                color: hasFilter ? Colors.white : AppColors.onSurfaceVariant,
+                size: 20,
+              ),
+              onPressed: _showFilterSheet,
+            ),
+          );
+        }),
       ],
     );
   }
@@ -939,139 +1268,123 @@ class _PropertyPreviewCard extends StatelessWidget {
             Flexible(
               child: Padding(
                 padding: const EdgeInsets.symmetric(vertical: 2),
-                child: IntrinsicWidth(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Flexible(
-                            child: Text(
-                              billboard.name,
-                              style: GoogleFonts.inter(
-                                fontSize: 15,
-                                fontWeight: FontWeight.w700,
-                                color: AppColors.onSurface,
-                              ),
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            billboard.name,
+                            style: GoogleFonts.inter(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.onSurface,
                             ),
-                          ),
-                          const SizedBox(width: 8),
-                          const Icon(
-                            Icons.bookmark_border,
-                            size: 18,
-                            color: AppColors.outline,
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 4),
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(
-                            Icons.location_on,
-                            size: 13,
-                            color: AppColors.onSurfaceVariant,
-                          ),
-                          const SizedBox(width: 4),
-                          Flexible(
-                            child: Text(
-                              billboard.location,
-                              style: GoogleFonts.inter(
-                                fontSize: 11,
-                                color: AppColors.onSurfaceVariant,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          if (distance != null) ...[
-                            Text(
-                              ' • ${_formatDistance(distance!)}',
-                              style: GoogleFonts.inter(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w600,
-                                color: AppColors.primary,
-                              ),
-                            ),
-                          ],
-                        ],
-                      ),
-                      const SizedBox(height: 6),
-                      Align(
-                        alignment: Alignment.centerLeft,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 4,
-                          ),
-                          decoration: BoxDecoration(
-                            color: availabilityBg,
-                            borderRadius: BorderRadius.circular(14),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Container(
-                                width: 6,
-                                height: 6,
-                                decoration: BoxDecoration(
-                                  color: availabilityColor,
-                                  shape: BoxShape.circle,
-                                ),
-                              ),
-                              const SizedBox(width: 6),
-                              Text(
-                                billboard.isAvailable
-                                    ? 'Available Now'
-                                    : 'Booked',
-                                style: GoogleFonts.inter(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w600,
-                                  color: availabilityColor,
-                                ),
-                              ),
-                            ],
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
+                        const SizedBox(width: 8),
+                        const Icon(
+                          Icons.bookmark_border,
+                          size: 18,
+                          color: AppColors.outline,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        const Icon(
+                          Icons.location_on,
+                          size: 13,
+                          color: AppColors.onSurfaceVariant,
+                        ),
+                        const SizedBox(width: 4),
+                        Expanded(
+                          child: Text(
+                            distance != null
+                                ? '${billboard.location} • ${_formatDistance(distance!)}'.trim()
+                                : billboard.location,
+                            style: GoogleFonts.inter(
+                              fontSize: 11,
+                              color: AppColors.onSurfaceVariant,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
                       ),
-                      const SizedBox(height: 10),
-                      Container(
-                        height: 1,
-                        color: AppColors.outlineVariant,
+                      decoration: BoxDecoration(
+                        color: availabilityBg,
+                        borderRadius: BorderRadius.circular(14),
                       ),
-                      const SizedBox(height: 8),
-                      Row(
+                      child: Row(
                         mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.baseline,
-                        textBaseline: TextBaseline.alphabetic,
                         children: [
+                          Container(
+                            width: 6,
+                            height: 6,
+                            decoration: BoxDecoration(
+                              color: availabilityColor,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
                           Text(
+                            billboard.isAvailable
+                                ? 'Available Now'
+                                : 'Booked',
+                            style: GoogleFonts.inter(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: availabilityColor,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Container(
+                      height: 1,
+                      color: AppColors.outlineVariant,
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Text(
                             _formatRupiah(billboard.pricePerWeek),
                             style: GoogleFonts.inter(
-                              fontSize: 16,
+                              fontSize: 15,
                               fontWeight: FontWeight.w800,
                               color: AppColors.primary,
                             ),
+                            overflow: TextOverflow.ellipsis,
                           ),
-                          const SizedBox(width: 4),
-                          Text(
-                            '/ month',
-                            style: GoogleFonts.inter(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.outline,
-                            ),
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          '/ bln',
+                          style: GoogleFonts.inter(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.outline,
                           ),
-                        ],
-                      ),
-                    ],
-                  ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
               ),
             ),
