@@ -52,7 +52,11 @@ class _ActivityViewState extends State<ActivityView> {
     super.initState();
     _ensureDependencies();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _controller.fetchActivities(status: null);
+      if (_controller.selectedStatus.value == 'all') {
+        _controller.fetchActivities(status: null);
+      } else {
+        _controller.fetchActivities(status: _controller.selectedStatus.value);
+      }
     });
   }
 
@@ -199,10 +203,21 @@ class _ActivityViewState extends State<ActivityView> {
                       final bookings = _controller.bookings;
                       if (bookings.isEmpty) {
                         final tabLabel = _tabs[_controller.selectedTab.value].toLowerCase();
-                        return _EmptyState(
-                          title: tabLabel == 'all' ? 'No bookings' : 'No $tabLabel bookings',
-                          subtitle: 'Booking pada tab ini belum tersedia.',
-                          icon: Icons.calendar_today_outlined,
+                        return RefreshIndicator(
+                          color: const Color(0xFF059669),
+                          onRefresh: () => _controller.fetchActivities(
+                              status: _statusForTab(_controller.selectedTab.value)),
+                          child: SingleChildScrollView(
+                            physics: const AlwaysScrollableScrollPhysics(),
+                            child: SizedBox(
+                              height: MediaQuery.of(context).size.height * 0.6,
+                              child: _EmptyState(
+                                title: tabLabel == 'all' ? 'No bookings' : 'No $tabLabel bookings',
+                                subtitle: 'Booking pada tab ini belum tersedia.',
+                                icon: Icons.calendar_today_outlined,
+                              ),
+                            ),
+                          ),
                         );
                       }
 
