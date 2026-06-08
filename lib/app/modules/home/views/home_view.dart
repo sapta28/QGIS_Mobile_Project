@@ -4,13 +4,21 @@ import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import 'dart:io';
 import '../../../../core/theme.dart';
+import '../../../../widgets/common_widgets.dart';
+import '../../activity/controllers/activity_controller.dart';
+import '../../activity/bindings/activity_binding.dart';
 import '../../activity/views/activity_view.dart';
+import '../../explore/bindings/explore_binding.dart';
+import '../../explore/controllers/explore_controller.dart';
 import '../../explore/views/explore_view.dart';
 import '../../inbox/views/inbox_view.dart';
 import '../../profile/views/profile_view.dart';
+import '../../profile/controllers/profile_controller.dart';
 import '../controllers/home_controller.dart';
 import '../widgets/custom_bottom_navbar.dart';
+import 'notifications_view.dart';
 
 class HomeView extends GetView<HomeController> {
   const HomeView({super.key});
@@ -51,7 +59,10 @@ class HomeView extends GetView<HomeController> {
         const _PageBackground(),
         SafeArea(
           bottom: false,
-          child: ListView(
+          child: RefreshIndicator(
+            onRefresh: controller.refreshHome,
+            color: const Color(0xFF059669),
+            child: ListView(
             padding: const EdgeInsets.only(bottom: 100),
             children: [
               Padding(
@@ -59,25 +70,36 @@ class HomeView extends GetView<HomeController> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Container(
-                      width: 44,
-                      height: 44,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(color: Colors.white, width: 2),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.05),
-                            blurRadius: 8,
-                            offset: const Offset(0, 2),
+                    Obx(() {
+                      final profileController = Get.find<ProfileController>();
+                      final displayName = profileController.name.value;
+                      final avatarUrl = profileController.avatarUrl.value;
+                      final fallbackAvatar =
+                          'https://ui-avatars.com/api/?name=${Uri.encodeComponent(displayName.isNotEmpty ? displayName : "User")}&background=059669&color=fff&size=128';
+                      
+                      return GestureDetector(
+                        onTap: () => controller.changeNav(4),
+                        child: Container(
+                          width: 44,
+                          height: 44,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.white, width: 2),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.05),
+                                blurRadius: 8,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                            image: DecorationImage(
+                              image: getAvatarProvider(avatarUrl, fallbackAvatar),
+                              fit: BoxFit.cover,
+                            ),
                           ),
-                        ],
-                        image: const DecorationImage(
-                          image: NetworkImage('https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=100&q=80'),
-                          fit: BoxFit.cover,
                         ),
-                      ),
-                    ),
+                      );
+                    }),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.center,
@@ -112,57 +134,64 @@ class HomeView extends GetView<HomeController> {
                               ),
                               const SizedBox(width: 4),
                               Flexible(
-                                child: Text(
-                                  'Surabaya, Jawa Timur',
-                                  style: GoogleFonts.inter(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w800,
-                                    color: const Color(0xFF0F172A),
-                                  ),
-                                  overflow: TextOverflow.ellipsis,
-                                ),
+                                child: Obx(() => Text(
+                                      controller.currentAddress.value,
+                                      style: GoogleFonts.inter(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w800,
+                                        color: const Color(0xFF0F172A),
+                                      ),
+                                      overflow: TextOverflow.ellipsis,
+                                    )),
                               ),
                             ],
                           ),
                         ],
                       ),
                     ),
-                    Container(
-                      width: 44,
-                      height: 44,
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.04),
-                            blurRadius: 8,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                      child: Stack(
-                        alignment: Alignment.center,
-                        children: [
-                          const Icon(
-                            Icons.notifications_none_rounded,
-                            color: Color(0xFF0F172A),
-                            size: 22,
-                          ),
-                          Positioned(
-                            top: 12,
-                            right: 12,
-                            child: Container(
-                              width: 8,
-                              height: 8,
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFEF4444),
-                                shape: BoxShape.circle,
-                                border: Border.all(color: Colors.white, width: 1.5),
-                              ),
+                    GestureDetector(
+                      onTap: () => Get.to(() => const NotificationsView()),
+                      child: Container(
+                        width: 44,
+                        height: 44,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.04),
+                              blurRadius: 8,
+                              offset: const Offset(0, 4),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
+                        child: Stack(
+                          alignment: Alignment.center,
+                          children: [
+                            const Icon(
+                              Icons.notifications_none_rounded,
+                              color: Color(0xFF0F172A),
+                              size: 22,
+                            ),
+                            Obx(() {
+                              final hasUnread = controller.notifications.any((n) => !n.isRead);
+                              if (!hasUnread) return const SizedBox.shrink();
+                              return Positioned(
+                                top: 12,
+                                right: 12,
+                                child: Container(
+                                  width: 8,
+                                  height: 8,
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFEF4444),
+                                    shape: BoxShape.circle,
+                                    border: Border.all(color: Colors.white, width: 1.5),
+                                  ),
+                                ),
+                              );
+                            }),
+                          ],
+                        ),
                       ),
                     ),
                   ],
@@ -184,6 +213,14 @@ class HomeView extends GetView<HomeController> {
                           iconGradientColors: const [Color(0xFF34D399), Color(0xFF059669)],
                           primaryColor: const Color(0xFF059669),
                           watermarkIcon: Icons.tv_rounded,
+                          onTap: () async {
+                            if (!Get.isRegistered<ActivityController>()) {
+                              ActivityBinding().dependencies();
+                            }
+                            final activityController = Get.find<ActivityController>();
+                            await activityController.fetchActivities(status: 'active');
+                            controller.changeNav(1);
+                          },
                         ),
                       ),
                       const SizedBox(width: 16),
@@ -197,6 +234,14 @@ class HomeView extends GetView<HomeController> {
                           iconGradientColors: const [Color(0xFFF43F5E), Color(0xFFE11D48)],
                           primaryColor: const Color(0xFFE11D48),
                           watermarkIcon: Icons.request_quote_rounded,
+                          onTap: () async {
+                            if (!Get.isRegistered<ActivityController>()) {
+                              ActivityBinding().dependencies();
+                            }
+                            final activityController = Get.find<ActivityController>();
+                            await activityController.fetchActivities(status: 'pending');
+                            controller.changeNav(1);
+                          },
                         ),
                       ),
                     ],
@@ -282,6 +327,13 @@ class HomeView extends GetView<HomeController> {
                       iconBgColor: const Color(0xFFDCFCE7),
                       iconData: Icons.picture_in_picture_alt_rounded,
                       iconColor: const Color(0xFF16A34A),
+                      onTap: () {
+                        if (!Get.isRegistered<ExploreController>()) {
+                          ExploreBinding().dependencies();
+                        }
+                        Get.find<ExploreController>().setCategoryFilter('Billboard');
+                        controller.changeNav(2);
+                      },
                     ),
                     _buildCategoryCard(
                       title: 'Videotron',
@@ -289,6 +341,13 @@ class HomeView extends GetView<HomeController> {
                       iconBgColor: const Color(0xFFE0F2FE),
                       iconData: Icons.play_circle_filled_rounded,
                       iconColor: const Color(0xFF0284C7),
+                      onTap: () {
+                        if (!Get.isRegistered<ExploreController>()) {
+                          ExploreBinding().dependencies();
+                        }
+                        Get.find<ExploreController>().setCategoryFilter('Videotron');
+                        controller.changeNav(2);
+                      },
                     ),
                     _buildCategoryCard(
                       title: 'LED Display',
@@ -296,6 +355,13 @@ class HomeView extends GetView<HomeController> {
                       iconBgColor: const Color(0xFFFFEDD5),
                       iconData: Icons.developer_board_rounded,
                       iconColor: const Color(0xFFEA580C),
+                      onTap: () {
+                        if (!Get.isRegistered<ExploreController>()) {
+                          ExploreBinding().dependencies();
+                        }
+                        Get.find<ExploreController>().setCategoryFilter('LED');
+                        controller.changeNav(2);
+                      },
                     ),
                   ],
                 ),
@@ -397,6 +463,7 @@ class HomeView extends GetView<HomeController> {
               )),
             ],
           ),
+          ),
         ),
       ],
     );
@@ -411,10 +478,13 @@ class HomeView extends GetView<HomeController> {
     required List<Color> iconGradientColors,
     required Color primaryColor,
     required IconData watermarkIcon,
+    VoidCallback? onTap,
   }) {
-    return Stack(
-      clipBehavior: Clip.none,
-      children: [
+    return GestureDetector(
+      onTap: onTap,
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
         PhysicalShape(
           color: Colors.white,
           elevation: 6,
@@ -546,6 +616,7 @@ class HomeView extends GetView<HomeController> {
           ),
         ),
       ],
+    ),
     );
   }
 
@@ -709,9 +780,12 @@ class HomeView extends GetView<HomeController> {
     required Color iconBgColor,
     required IconData iconData,
     required Color iconColor,
+    VoidCallback? onTap,
   }) {
-    return Container(
-      width: 140,
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 140,
       margin: const EdgeInsets.only(right: 16),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -773,6 +847,7 @@ class HomeView extends GetView<HomeController> {
             child: const Icon(Icons.arrow_forward_rounded, color: Colors.white, size: 14),
           ),
         ],
+      ),
       ),
     );
   }
